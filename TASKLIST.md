@@ -35,6 +35,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     / `Gustav.Vanderdi@draexlmaier.com`.
   - Baseline specifies `Gustav Vanderdi`
     / `Vanderdi.Gustav@gmail.com`.
+  - 2026-10-29: User chose gmail identity for the T007 commit only, via
+    per-command `-c user.name/user.email`. Local config unchanged; open.
 - **~time-spent so far**: 0 hours
 
 ---
@@ -61,7 +63,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     readability/completeness and expected files first. Archive old model
     as ZIP with configurable retention.
   - Settings panel should show small operational metrics.
-  - Repository currently has no solution or project files.
+  - Repository had no solution or project files at planning start.
   - Need representative ZIP/schema, exact version comparison rule, folder
     mapping count, and desired metrics.
   - User wants a wireframe before plan approval: Upload, Download, and
@@ -88,10 +90,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     Target JSON shape and value types are the current design reference.
   - Still need define how PNGs match `Results[]` records and handle
     mandatory fields or failed/missing AI results.
-  - Upload wireframe should be based on user's path breakdown and these
-    samples; no plan or implementation approved yet.
-  - User accepted the Upload page direction; detailed requirements and plan
-    are still in progress. Planning only; no implementation approved.
+  - User accepted the Upload page direction; detailed requirements remain
+    in progress.
   - Upload page draft:
     - Show background monitor state, last scan, watched root, and discovered
       ZIP status. Watched layout: `<root>\<year>\<month>\<day>\*.zip`.
@@ -133,10 +133,67 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - User chose automatic retries for failed ZIP processing, limited before
     manual intervention: three retries after the first failure, five minutes
     apart, then manual retry.
+  - User approved the first implementation plan: clean-architecture
+    Domain, Application, Infrastructure, Worker, and WPF UI layers.
+    Upload pipeline comes first; field mapping, Download, and History defer.
 - **~time-spent so far**: ~0.25 hours
 
 ---
 
+## T005: Building Upload Application Core
+- **Status**: In Progress
+- **Description**: Build a testable Upload path in clean-architecture layers.
+- **Work Done**:
+  - Added solution with separate Domain and Application projects.
+  - Added Upload stages, progress model, package contracts, output path
+    builder, and order-processing use case.
+  - Added Infrastructure ZIP validation/copying and in-memory progress
+    storage. Progress resumes while GUI stays open; app restart recovery is
+    deferred.
+  - Added console Worker that processes one ZIP with explicit order/date
+    inputs and a WPF desktop GUI for ZIP, order/date/destination inputs,
+    output path preview, copy progress, and cancellation.
+  - Added VS Code GUI launch and desktop build-task configurations. README
+    documents GUI copy-test setup.
+  - Copy test deliberately does not generate JSON; exact target schema and
+    field mapping are not available. Continuous folder monitoring, automatic
+    retries, and Windows service remain.
+  - Removed SQLite dependency and its transitive vulnerability after user
+    requested a simpler first milestone.
+  - Progress resets when destination, order, or ZIP picture list changes.
+  - Earlier Worker smoke test used SQLite. After switching to in-memory
+    progress, `dotnet build DaisiProvider.sln` succeeded in 1.51 seconds with
+    zero warnings and zero errors. GUI runtime and user test remain pending.
+  - User will test through GUI; command-line Worker is an internal test seam.
+- **~time-spent so far**: ~1.1 hours
+
+---
+
+## T006: Reading Session Starter Files (2026-10-29)
+- **Status**: Closed
+- **Description**: Session start: read entry point, baseline, task list,
+  and README; check Git identity and remote.
+- **Work Done**:
+  - Read `.claude.md`, `SESSION_BASELINE.md`, `TASKLIST.md`, `README.md`.
+  - Git identity still mismatches baseline (see T003). Remote is
+    `https://github.com/xGusu/DaisiProvider.git`, branch `master`.
+  - README documents **Process folder** batch mode and archive filename
+    parsing; T005 does not record that work yet.
+- **time-spent**: ~0.05 hours
+
+---
+
+## T007: Committing and Pushing Upload Core (2026-10-29)
+- **Status**: Closed
+- **Description**: User asked to commit all pending work and push.
+- **Work Done**:
+  - Committed all staged and unstaged files on `master` as
+    `Gustav Vanderdi <Vanderdi.Gustav@gmail.com>` (see T003).
+  - Pushed `master` to `origin`.
+- **time-spent**: ~0.05 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 4 (1 closed, 3 open)
-- **Total Time**: ~0 hours
+- **Total Tasks**: 7 (3 closed, 4 open)
+- **Total Time**: ~1.45 hours

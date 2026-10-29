@@ -1,0 +1,71 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DaisiProvider Upload GUI",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-upload-desktop",
+      "program": "${workspaceFolder}\\src\\DaisiProvider.Desktop\\bin\\Debug\\net10.0-windows\\DaisiProvider.Desktop.dll",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole"
+    },
+    {
+      "name": "Upload one ZIP (copy test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-upload-worker",
+      "program": "${workspaceFolder}\\src\\DaisiProvider.Worker\\bin\\Debug\\net10.0\\DaisiProvider.Worker.dll",
+      "args": [
+        "process",
+        "${input:zipPath}",
+        "${input:sourceDate}",
+        "${input:destinationRoot}",
+        "${input:computerName}",
+        "${input:projectName}",
+        "${input:orderId}",
+        "${input:orderTimestamp}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "zipPath",
+      "type": "promptString",
+      "description": "Path to ZIP containing order_report.json and raw PNGs"
+    },
+    {
+      "id": "sourceDate",
+      "type": "promptString",
+      "description": "Date folder containing ZIP (yyyy-MM-dd)"
+    },
+    {
+      "id": "destinationRoot",
+      "type": "promptString",
+      "description": "Local or network destination root"
+    },
+    {
+      "id": "computerName",
+      "type": "promptString",
+      "description": "Computer folder name",
+      "default": "${env:COMPUTERNAME}"
+    },
+    {
+      "id": "projectName",
+      "type": "promptString",
+      "description": "Project folder name"
+    },
+    {
+      "id": "orderId",
+      "type": "promptString",
+      "description": "Order ID used in destination folder"
+    },
+    {
+      "id": "orderTimestamp",
+      "type": "promptString",
+      "description": "Order timestamp (yyyyMMddHHmmss)"
+    }
+  ]
+}
