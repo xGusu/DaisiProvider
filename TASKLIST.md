@@ -27,7 +27,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T003: Resolving Git Identity Mismatch
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Git identity differs from the identity specified in
   `SESSION_BASELINE.md`; ask user before changing local Git configuration.
 - **Work Done**:
@@ -36,8 +36,12 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - Baseline specifies `Gustav Vanderdi`
     / `Vanderdi.Gustav@gmail.com`.
   - 2026-10-29: User chose gmail identity for the T007 commit only, via
-    per-command `-c user.name/user.email`. Local config unchanged; open.
-- **~time-spent so far**: 0 hours
+    per-command `-c user.name/user.email`.
+  - User is sole developer, works from several computers. User approved
+    repo-local gmail identity on this machine (global config untouched)
+    and a per-machine check note in SESSION_BASELINE Git section.
+  - Committed and pushed baseline and task list updates (user approved).
+- **time-spent**: ~0.05 hours
 
 ---
 
@@ -195,5 +199,5 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## Project Statistics
-- **Total Tasks**: 7 (3 closed, 4 open)
-- **Total Time**: ~1.45 hours
+- **Total Tasks**: 7 (4 closed, 3 open)
+- **Total Time**: ~1.5 hours

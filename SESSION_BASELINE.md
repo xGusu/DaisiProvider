@@ -194,6 +194,10 @@ technical detail in relevant documentation.
 - Never commit as different account without explicit user request
 - Verify config at session start: `git config user.name` and `git config
   user.email`
+- User is the only developer and works from several computers. Machines
+  may carry a company global identity. If the repo shows a wrong identity,
+  ask, then set it per repo only: `git config --local user.name` / `email`.
+  Never change the global config.
 
 ## Current Project Status
 
