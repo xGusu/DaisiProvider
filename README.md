@@ -13,6 +13,26 @@ project. The window title and the Worker show it. A release raises it
 there, is built in Release configuration from scratch, and the commit is
 tagged `vX.Y.Z`.
 
+### Installing on another PC
+
+Two publish profiles exist for the Desktop app (VS Code: Run Task):
+
+- `publish-desktop-selfcontained` -> `publish\DaisiProvider-<version>-selfcontained\`
+  (about 140 MB). Includes .NET; copy the folder to any 64-bit Windows PC
+  and start `DaisiProvider.Desktop.exe`. Nothing to install.
+- `publish-desktop-runtime` -> `publish\DaisiProvider-<version>-runtime\`
+  (under 1 MB). The PC needs the .NET 10 Desktop Runtime (x64).
+
+Both tasks skip NuGet sources that cannot be reached (e.g. the company
+feed off the company network). `publish/` is not stored in git.
+
+On the new PC the settings live in
+`C:\ProgramData\DaisiProvider\settings.json`. The file can be copied, but
+the network password must be entered again (it is encrypted for one PC
+only), and Computer must be changed to the new PC's name.
+
+### Release history
+
 - 1.0.0: first release. Upload of one ZIP or an archive folder to a local
   or network destination, configurable copy rules, path layout and DAISI
   log JSON.

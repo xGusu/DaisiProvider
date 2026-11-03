@@ -20,6 +20,32 @@
         "src\\DaisiProvider.Worker\\DaisiProvider.Worker.csproj"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish-desktop-selfcontained",
+      "detail": "publish\\DaisiProvider-<version>-selfcontained: includes .NET, runs on any 64-bit Windows PC",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "src\\DaisiProvider.Desktop\\DaisiProvider.Desktop.csproj",
+        "-p:PublishProfile=SelfContained",
+        "-p:RestoreIgnoreFailedSources=true"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish-desktop-runtime",
+      "detail": "publish\\DaisiProvider-<version>-runtime: small, target PC needs .NET 10 Desktop Runtime x64",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "src\\DaisiProvider.Desktop\\DaisiProvider.Desktop.csproj",
+        "-p:PublishProfile=FrameworkDependent",
+        "-p:RestoreIgnoreFailedSources=true"
+      ],
+      "problemMatcher": "$msCompile"
     }
   ]
 }

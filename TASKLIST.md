@@ -847,12 +847,39 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     Desktop file version `1.0.0+7880b91...` (hash = last commit at build
     time).
   - Not tested in the GUI before release (user asked to release).
-  - User said "push all": commit all pending work (T012-T030), tag
-    `v1.0.0`, push `master` and tag.
+  - User said "push all": committed all pending work (T012-T030) as
+    `4b37941` (gmail identity), annotated tag `v1.0.0`, pushed `master`
+    (7880b91..4b37941) and the tag to origin.
 - **time-spent**: ~0.15 hours
 
 ---
 
+## T031: Running the App on Another PC
+- **Status**: Open
+- **Description**: User asks whether copying and running the app is
+  enough to use it on another PC.
+- **Work Done**:
+  - 2026-11-03: Answered: needs .NET 10 Desktop Runtime, or a
+    self-contained publish; settings file can be copied but the network
+    password must be entered again (DPAPI LocalMachine). Offered a
+    publish.
+  - User: make both options available. Added publish profiles
+    `SelfContained.pubxml` / `FrameworkDependent.pubxml` (win-x64,
+    Release, output `publish\DaisiProvider-<version>-selfcontained|runtime`),
+    VS Code tasks `publish-desktop-selfcontained` / `-runtime`,
+    `publish/` in `.gitignore`.
+  - Run 1: framework-dependent OK (0.4 MB, 11 files). Self-contained
+    failed NU1301: runtime packs not cached, source "Nexus 3"
+    (company feed) "No such host is known".
+  - Run 2 with `-p:RestoreIgnoreFailedSources=true` (packs from
+    nuget.org): OK, 139.8 MB, 406 files. Switch added to both tasks.
+  - User approved commit and push (2026-11-03); same commit also holds
+    the T030 push note.
+  - Not yet started on another PC (user).
+- **~time-spent so far**: ~0.2 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 30 (15 closed, 15 open)
-- **Total Time**: ~7.6 hours
+- **Total Tasks**: 31 (15 closed, 16 open)
+- **Total Time**: ~7.8 hours
