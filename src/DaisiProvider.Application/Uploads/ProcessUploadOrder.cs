@@ -9,7 +9,11 @@ public sealed class ProcessUploadOrder(
     IUploadProgressStore progressStore,
     IUploadPackageReader packageReader,
     IUploadPictureCopier pictureCopier,
-    UploadPathBuilder pathBuilder)
+    IUploadReportStore reportStore,
+    UploadPathBuilder pathBuilder,
+    DaisiLogBuilder logBuilder,
+    IModelCatalog modelCatalog,
+    IUploadDestinationAccess destinationAccess)
 {
     public async Task<UploadProgress> ExecuteAsync(
         UploadRequest request,
@@ -19,10 +23,18 @@ public sealed class ProcessUploadOrder(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SourceZipPath);
         ArgumentNullException.ThrowIfNull(request.Destination);
-        ArgumentNullException.ThrowIfNull(request.Order);
+        ArgumentNullException.ThrowIfNull(request.LogSettings);
+
+        // Fail before copying: images without a log JSON would never be picked up.
+        var missingSettings = request.LogSettings.MissingMandatoryValues();
+        if (missingSettings.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"DAISI log settings incomplete: {string.Join(", ", missingSettings)}.");
+        }
 
         var progress = await progressStore.FindAsync(request.SourceZipPath, cancellationToken)
-            ?? UploadProgress.Create(request.SourceZipPath, request.SourceDate);
+            ?? UploadProgress.Create(request.SourceZipPath);
 
         var isRetry = request.OverwriteOnRetry ||
             progress.Stage is UploadStage.RetryScheduled or UploadStage.Failed;
@@ -41,57 +53,76 @@ public sealed class ProcessUploadOrder(
 
         var package = await packageReader.ReadAndValidateAsync(
             request.SourceZipPath,
-            request.Order,
             cancellationToken);
-        var outputPaths = pathBuilder.Build(request.Destination, request.SourceDate, package.Order);
+        // Folder and JSON name use the ZIP file name time (user decision, T018);
+        // date folders follow the order start in UTC, like TimeStampUTC in the log.
+        var order = UploadArchiveMetadataParser.ParseOrder(request.SourceZipPath);
+        if (package.Report is not null &&
+            !string.Equals(order.OrderId, package.Report.OrderId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                $"ZIP name order ID {order.OrderId} differs from order_report.json OrderId {package.Report.OrderId}.");
+        }
+
+        var sourceDate = DateOnly.FromDateTime(
+            logBuilder.OrderStartUtc(order, package.Report, package.FileNames).UtcDateTime);
+        var outputPaths = pathBuilder.Build(request.Destination, sourceDate, order);
+
+        // Before the delivered check: an unconnected share would look like "not delivered".
+        await destinationAccess.PrepareAsync(request.Destination, cancellationToken);
+
+        // The server may already have moved a delivered order to the cloud; do not send it twice.
+        if (!request.OverwriteOnRetry && reportStore.Exists(outputPaths.ReportFile))
+        {
+            progress = progress with
+            {
+                Stage = UploadStage.AlreadyDelivered,
+                Order = order,
+                SourceDate = sourceDate
+            };
+            await SaveProgressAsync(progress, cancellationToken, progressObserver);
+            return progress;
+        }
+
+        DaisiLogBuilder.CheckProjects(request.LogSettings.Project, package.FileNames, request.Destination);
+
+        // Read model metadata before copying, so a broken meta.json fails the order early.
+        var modelsByPosition = await LoadModelsAsync(
+            request.LogSettings.ModelsRoot,
+            package.FileNames,
+            cancellationToken);
+
         var destinationKey = CreateDestinationKey(outputPaths.PictureDirectory, outputPaths.ReportFile);
         var manifestKey = Convert.ToHexString(
-            SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(package.PictureNames)));
+            SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(package.FileNames)));
         var destinationChanged = progress.DestinationKey is not null &&
             !string.Equals(progress.DestinationKey, destinationKey, StringComparison.OrdinalIgnoreCase);
-        var orderChanged = progress.Order is not null && progress.Order != package.Order;
+        var orderChanged = progress.Order is not null && progress.Order != order;
         var manifestChanged = progress.PictureManifestKey is not null &&
             !string.Equals(progress.PictureManifestKey, manifestKey, StringComparison.Ordinal);
         if (isRetry || destinationChanged || orderChanged || manifestChanged ||
-            progress.SourceDate != request.SourceDate)
+            progress.SourceDate != sourceDate ||
+            progress.PictureCount != package.FileNames.Count)
         {
-            progress = progress with
-            {
-                CopiedPictureCount = 0,
-                SourceDate = request.SourceDate,
-                DestinationKey = destinationKey,
-                PictureManifestKey = manifestKey
-            };
-            await SaveProgressAsync(progress, cancellationToken, progressObserver);
-        }
-
-        if (progress.PictureCount != package.PictureNames.Count)
-        {
-            progress = progress with
-            {
-                Order = package.Order,
-                SourceDate = request.SourceDate,
-                PictureCount = package.PictureNames.Count,
-                CopiedPictureCount = 0,
-                DestinationKey = destinationKey,
-                PictureManifestKey = manifestKey
-            };
+            progress = progress with { CopiedPictureCount = 0 };
         }
 
         progress = progress with
         {
-            Order = package.Order,
+            Order = order,
+            SourceDate = sourceDate,
+            PictureCount = package.FileNames.Count,
             DestinationKey = destinationKey,
             PictureManifestKey = manifestKey
         };
-        for (var index = progress.CopiedPictureCount; index < package.PictureNames.Count; index++)
+        for (var index = progress.CopiedPictureCount; index < package.FileNames.Count; index++)
         {
             progress = progress with { Stage = UploadStage.Copying };
             await SaveProgressAsync(progress, cancellationToken, progressObserver);
 
             await pictureCopier.CopyPictureAsync(
                 request.SourceZipPath,
-                package.PictureNames[index],
+                package.FileNames[index],
                 outputPaths.PictureDirectory,
                 cancellationToken);
 
@@ -99,9 +130,45 @@ public sealed class ProcessUploadOrder(
             await SaveProgressAsync(progress, cancellationToken, progressObserver);
         }
 
-        progress = progress with { Stage = UploadStage.PicturesCopied };
+        // The log JSON triggers the server's cloud upload, so it is written only after every file is copied.
+        progress = progress with { Stage = UploadStage.WritingJson };
+        await SaveProgressAsync(progress, cancellationToken, progressObserver);
+        var log = logBuilder.Build(
+            order,
+            package.Report,
+            package.FileNames,
+            request.Destination,
+            outputPaths,
+            request.LogSettings,
+            modelsByPosition);
+        await reportStore.WriteAsync(outputPaths.ReportFile, log, cancellationToken);
+
+        progress = progress with { Stage = UploadStage.Complete };
         await SaveProgressAsync(progress, cancellationToken, progressObserver);
         return progress;
+    }
+
+    private async Task<IReadOnlyDictionary<string, ModelInfo>> LoadModelsAsync(
+        string? modelsRoot,
+        IReadOnlyList<string> fileNames,
+        CancellationToken cancellationToken)
+    {
+        var models = new Dictionary<string, ModelInfo>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(modelsRoot))
+        {
+            return models;
+        }
+
+        foreach (var position in DaisiLogBuilder.PicturePositions(fileNames))
+        {
+            var model = await modelCatalog.FindAsync(modelsRoot, position, cancellationToken);
+            if (model is not null)
+            {
+                models[position] = model;
+            }
+        }
+
+        return models;
     }
 
     private async Task SaveProgressAsync(

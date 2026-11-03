@@ -12,6 +12,30 @@ public static class UploadArchiveMetadataParser
 
     public static UploadArchiveMetadata Parse(string zipPath)
     {
+        var order = ParseOrder(zipPath);
+
+        var dayDirectory = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(zipPath))!);
+        var monthDirectory = dayDirectory.Parent;
+        var yearDirectory = monthDirectory?.Parent;
+        if (monthDirectory is null ||
+            yearDirectory is null ||
+            !DateOnly.TryParseExact(
+                $"{yearDirectory.Name}-{monthDirectory.Name}-{dayDirectory.Name}",
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var sourceDate))
+        {
+            throw new InvalidDataException(
+                $"Archive must be stored under a year\\month\\day folder: {zipPath}");
+        }
+
+        return new UploadArchiveMetadata(order, sourceDate);
+    }
+
+    // Order ID and order time (local, as written by the producer) from the ZIP file name only.
+    public static OrderIdentity ParseOrder(string zipPath)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(zipPath);
 
         var fileName = Path.GetFileName(zipPath);
@@ -46,26 +70,8 @@ public static class UploadArchiveMetadataParser
                 $"Archive name contains an invalid order timestamp: {fileName}");
         }
 
-        var dayDirectory = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(zipPath))!);
-        var monthDirectory = dayDirectory.Parent;
-        var yearDirectory = monthDirectory?.Parent;
-        if (monthDirectory is null ||
-            yearDirectory is null ||
-            !DateOnly.TryParseExact(
-                $"{yearDirectory.Name}-{monthDirectory.Name}-{dayDirectory.Name}",
-                "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var sourceDate))
-        {
-            throw new InvalidDataException(
-                $"Archive must be stored under a year\\month\\day folder: {zipPath}");
-        }
-
-        return new UploadArchiveMetadata(
-            new OrderIdentity(
-                orderId,
-                new DateTimeOffset(DateTime.SpecifyKind(timestamp, DateTimeKind.Unspecified), TimeSpan.Zero)),
-            sourceDate);
+        return new OrderIdentity(
+            orderId,
+            new DateTimeOffset(DateTime.SpecifyKind(timestamp, DateTimeKind.Unspecified), TimeSpan.Zero));
     }
 }

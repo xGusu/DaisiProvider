@@ -4,7 +4,7 @@ using DaisiProvider.Domain.Uploads;
 
 namespace DaisiProvider.Infrastructure.Uploads;
 
-public sealed class ZipUploadPackageReader : IUploadPackageReader
+public sealed class ZipUploadPackageReader(CopySelection selection) : IUploadPackageReader
 {
     private static readonly TimeSpan UnlockTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan UnlockPollInterval = TimeSpan.FromSeconds(1);
@@ -41,52 +41,52 @@ public sealed class ZipUploadPackageReader : IUploadPackageReader
         }
     }
 
-    public Task<UploadPackage> ReadAndValidateAsync(
+    public async Task<UploadPackage> ReadAndValidateAsync(
         string sourceZipPath,
-        OrderIdentity order,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!selection.HasEnabledRules)
+        {
+            throw new InvalidOperationException("No copy rule is enabled.");
+        }
+
         using var archive = ZipFile.OpenRead(sourceZipPath);
 
-        var containsOrderReport = archive.Entries.Any(entry =>
+        // Missing report is allowed (log built without it); a present but broken report still fails.
+        var reportEntry = archive.Entries.FirstOrDefault(entry =>
             string.Equals(
                 Path.GetFileName(entry.FullName),
                 "order_report.json",
                 StringComparison.OrdinalIgnoreCase));
-        if (!containsOrderReport)
+        OrderReport? report = null;
+        if (reportEntry is not null)
         {
-            throw new InvalidDataException("ZIP does not contain order_report.json.");
+            await using var reportStream = reportEntry.Open();
+            report = await OrderReportParser.ParseAsync(reportStream, cancellationToken);
         }
 
-        var pictures = archive.Entries
-            .Where(IsPictureInRawFolder)
+        var files = archive.Entries
+            .Where(entry => selection.Matches(entry.FullName))
             .Select(entry => entry.FullName)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        if (pictures.Length == 0)
+        if (files.Length == 0)
         {
-            throw new InvalidDataException("ZIP raw folder contains no PNG pictures.");
+            throw new InvalidDataException("ZIP contains no files matching the enabled copy rules.");
         }
 
-        var duplicateNames = pictures
-            .Select(Path.GetFileName)
+        // All selected files land in one order folder, so leaf names must be unique.
+        var duplicateNames = files
+            .Select(name => Path.GetFileName(name.Replace('\\', '/')))
             .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicateNames is not null)
         {
             throw new InvalidDataException(
-                $"ZIP raw folder contains duplicate picture filename: {duplicateNames.Key}");
+                $"Selected ZIP files contain duplicate filename: {duplicateNames.Key}");
         }
 
-        return Task.FromResult(new UploadPackage(order, pictures));
-    }
-
-    private static bool IsPictureInRawFolder(ZipArchiveEntry entry)
-    {
-        var normalizedName = entry.FullName.Replace('\\', '/');
-        return normalizedName.StartsWith("raw/", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(Path.GetExtension(normalizedName), ".png", StringComparison.OrdinalIgnoreCase) &&
-            !normalizedName.EndsWith("/", StringComparison.Ordinal);
+        return new UploadPackage(report, files);
     }
 }

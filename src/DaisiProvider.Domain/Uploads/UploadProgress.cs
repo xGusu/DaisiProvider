@@ -2,7 +2,7 @@ namespace DaisiProvider.Domain.Uploads;
 
 public sealed record UploadProgress(
     string SourceZipPath,
-    DateOnly SourceDate,
+    DateOnly? SourceDate,
     UploadStage Stage,
     OrderIdentity? Order,
     int PictureCount,
@@ -13,10 +13,10 @@ public sealed record UploadProgress(
     string? DestinationKey,
     string? PictureManifestKey)
 {
-    public static UploadProgress Create(string sourceZipPath, DateOnly sourceDate) =>
+    public static UploadProgress Create(string sourceZipPath) =>
         new(
             sourceZipPath,
-            sourceDate,
+            null,
             UploadStage.WaitingForZipUnlock,
             null,
             0,

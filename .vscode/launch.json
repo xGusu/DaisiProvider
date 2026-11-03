@@ -11,7 +11,7 @@
       "console": "internalConsole"
     },
     {
-      "name": "Upload one ZIP (copy test)",
+      "name": "Upload one ZIP (command line)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build-upload-worker",
@@ -19,12 +19,9 @@
       "args": [
         "process",
         "${input:zipPath}",
-        "${input:sourceDate}",
         "${input:destinationRoot}",
         "${input:computerName}",
-        "${input:projectName}",
-        "${input:orderId}",
-        "${input:orderTimestamp}"
+        "${input:projectName}"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
@@ -34,12 +31,7 @@
     {
       "id": "zipPath",
       "type": "promptString",
-      "description": "Path to ZIP containing order_report.json and raw PNGs"
-    },
-    {
-      "id": "sourceDate",
-      "type": "promptString",
-      "description": "Date folder containing ZIP (yyyy-MM-dd)"
+      "description": "Path to ZIP containing order_report.json and files matching the copy rules"
     },
     {
       "id": "destinationRoot",
@@ -56,16 +48,6 @@
       "id": "projectName",
       "type": "promptString",
       "description": "Project folder name"
-    },
-    {
-      "id": "orderId",
-      "type": "promptString",
-      "description": "Order ID used in destination folder"
-    },
-    {
-      "id": "orderTimestamp",
-      "type": "promptString",
-      "description": "Order timestamp (yyyyMMddHHmmss)"
     }
   ]
 }

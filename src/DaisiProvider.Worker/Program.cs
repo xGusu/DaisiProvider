@@ -1,37 +1,17 @@
-using System.Globalization;
 using DaisiProvider.Application.Uploads;
 using DaisiProvider.Domain.Uploads;
 using DaisiProvider.Infrastructure.Uploads;
 
-if (args.Length is < 8 or > 9 ||
+Console.WriteLine($"DaisiProvider Worker {typeof(ProcessUploadOrder).Assembly.GetName().Version?.ToString(3)}");
+
+if (args.Length is < 5 or > 6 ||
     !string.Equals(args[0], "process", StringComparison.OrdinalIgnoreCase) ||
-    (args.Length == 9 && !string.Equals(args[8], "--retry", StringComparison.OrdinalIgnoreCase)))
+    (args.Length == 6 && !string.Equals(args[5], "--retry", StringComparison.OrdinalIgnoreCase)))
 {
     Console.Error.WriteLine(
-        "Usage: process <zip> <source-date:yyyy-MM-dd> <destination-root> " +
-        "<computer> <project> <order-id> <order-timestamp:yyyyMMddHHmmss> [--retry]");
-    return 2;
-}
-
-if (!DateOnly.TryParseExact(
-        args[2],
-        "yyyy-MM-dd",
-        CultureInfo.InvariantCulture,
-        DateTimeStyles.None,
-        out var sourceDate))
-{
-    Console.Error.WriteLine("Invalid source date. Expected yyyy-MM-dd.");
-    return 2;
-}
-
-if (!DateTime.TryParseExact(
-        args[7],
-        "yyyyMMddHHmmss",
-        CultureInfo.InvariantCulture,
-        DateTimeStyles.None,
-        out var timestamp))
-{
-    Console.Error.WriteLine("Invalid order timestamp. Expected yyyyMMddHHmmss.");
+        "Usage: process <zip> <destination-root> <computer> <project> [--retry]");
+    Console.Error.WriteLine(
+        "Order ID, timestamp and date come from order_report.json; DAISI log values from the settings file.");
     return 2;
 }
 
@@ -51,30 +31,37 @@ Console.CancelKeyPress += (_, eventArgs) =>
 
 try
 {
+    var settingsStore = new JsonUploadSettingsStore(JsonUploadSettingsStore.DefaultPath);
+    var settings = await settingsStore.LoadAsync(cancellation.Token);
+    var copyRules = settings?.CopyRules ?? CopySelection.DefaultRules;
+    Console.WriteLine(settings is null
+        ? $"Settings: none at {settingsStore.SettingsPath}; using default copy rules."
+        : $"Settings: {settingsStore.SettingsPath}");
+
     var processor = new ProcessUploadOrder(
         new InMemoryUploadProgressStore(),
-        new ZipUploadPackageReader(),
+        new ZipUploadPackageReader(new CopySelection(copyRules)),
         new ZipUploadPictureCopier(),
-        new UploadPathBuilder());
+        new FileUploadReportStore(),
+        new UploadPathBuilder(),
+        new DaisiLogBuilder(),
+        new FolderModelCatalog(),
+        new WindowsUploadDestinationAccess());
     var request = new UploadRequest(
         zipPath,
-        sourceDate,
-        new UploadDestinationSettings(args[3], args[4], args[5]),
-        new OrderIdentity(
-            args[6],
-            new DateTimeOffset(DateTime.SpecifyKind(timestamp, DateTimeKind.Unspecified), TimeSpan.Zero)),
-        args.Length == 9);
+        new UploadDestinationSettings(args[2], args[3], args[4]),
+        settings?.DaisiLog ?? DaisiLogSettings.Default,
+        args.Length == 6);
 
     Console.WriteLine($"Processing: {zipPath}");
     var result = await processor.ExecuteAsync(request, cancellation.Token);
     Console.WriteLine($"Status: {result.Stage}");
-    Console.WriteLine($"Pictures copied: {result.CopiedPictureCount}/{result.PictureCount}");
-    Console.WriteLine("JSON report: deferred until target schema and field mapping are defined.");
-    return 0;
+    Console.WriteLine($"Files copied: {result.CopiedPictureCount}/{result.PictureCount}");
+    return result.Stage is UploadStage.Complete or UploadStage.AlreadyDelivered ? 0 : 1;
 }
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 {
-    Console.Error.WriteLine("Processing cancelled. Copied pictures remain at destination.");
+    Console.Error.WriteLine("Processing cancelled. Copied files remain at destination; no log JSON was written.");
     return 130;
 }
 catch (Exception exception)

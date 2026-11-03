@@ -7,7 +7,7 @@ public enum UploadStage
     Copying,
     WritingJson,
     RetryScheduled,
-    PicturesCopied,
     Complete,
+    AlreadyDelivered,
     Failed
 }
