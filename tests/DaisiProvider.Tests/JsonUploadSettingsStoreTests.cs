@@ -47,6 +47,39 @@ public sealed class JsonUploadSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Load_OldDefaultLayout_UsesCapitalDataAndLogs()
+    {
+        var store = new JsonUploadSettingsStore(Path.Combine(directory, "settings.json"));
+        var destination = new UploadDestinationSettings(@"D:\Data", "PC01", "Daisi") with
+        {
+            FilesTemplate = @"{root}\{computer}\data\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}",
+            LogTemplate = @"{root}\{computer}\logs\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}.json"
+        };
+
+        await store.SaveAsync(new UploadAppSettings(destination, []), CancellationToken.None);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(UploadPathBuilder.DefaultFilesTemplate, loaded!.Destination.FilesTemplate);
+        Assert.Equal(UploadPathBuilder.DefaultLogTemplate, loaded.Destination.LogTemplate);
+    }
+
+    [Fact]
+    public async Task Load_ChangedLayout_StaysAsSaved()
+    {
+        var store = new JsonUploadSettingsStore(Path.Combine(directory, "settings.json"));
+        var destination = new UploadDestinationSettings(@"D:\Data", "PC01", "Daisi") with
+        {
+            FilesTemplate = @"{root}\data\{OrderId}",
+            LogTemplate = @"{root}\logs\{OrderId}.json"
+        };
+
+        await store.SaveAsync(new UploadAppSettings(destination, []), CancellationToken.None);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(destination, loaded!.Destination);
+    }
+
+    [Fact]
     public async Task NetworkPassword_IsStoredEncryptedAndLoadedPlain()
     {
         var store = new JsonUploadSettingsStore(Path.Combine(directory, "settings.json"));

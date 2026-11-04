@@ -14,8 +14,8 @@ public sealed class UploadPathBuilderTests
     {
         var paths = Build(new UploadDestinationSettings(@"D:\out", "PC1", "proj"));
 
-        Assert.Equal(@"D:\out\PC1\data\2026\10\21\K1_20261022013000", paths.PictureDirectory);
-        Assert.Equal(@"D:\out\PC1\logs\2026\10\21\K1_20261022013000.json", paths.ReportFile);
+        Assert.Equal(@"D:\out\PC1\Data\2026\10\21\K1_20261022013000", paths.PictureDirectory);
+        Assert.Equal(@"D:\out\PC1\Logs\2026\10\21\K1_20261022013000.json", paths.ReportFile);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class UploadPathBuilderTests
             @"D:\ignored", "PC1", "proj", UploadDestinationKind.Network,
             new NetworkShareSettings("//srv/share/", null, null)));
 
-        Assert.Equal(@"\\srv\share\PC1\data\2026\10\21\K1_20261022013000", paths.PictureDirectory);
+        Assert.Equal(@"\\srv\share\PC1\Data\2026\10\21\K1_20261022013000", paths.PictureDirectory);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class UploadPathBuilderTests
     {
         var paths = Build(new UploadDestinationSettings(@"D:\out", "PC1", ""));
 
-        Assert.StartsWith(@"D:\out\PC1\data", paths.PictureDirectory);
+        Assert.StartsWith(@"D:\out\PC1\Data", paths.PictureDirectory);
     }
 
     [Theory]

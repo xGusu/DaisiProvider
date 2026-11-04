@@ -139,8 +139,8 @@ Today `order_report.json` has none of the Anomaly/Classification values
 - Server/share name in these docs may stay; repository is private.
 - `ImagePath` (user decision 2026-11-03, T023): full destination path
   with `/`, following the path layout template (T025). Default for share
-  and local root: `<root>/<computer>/data/yyyy/MM/dd/<order>/<file>`,
-  e.g. `//<server>/<share>/<computer>/data/...` (no project folder).
+  and local root: `<root>/<computer>/Data/yyyy/MM/dd/<order>/<file>`,
+  e.g. `//<server>/<share>/<computer>/Data/...` (no project folder).
 - Defaults applied until the open questions are answered: source file
   names (with `#`, `.bmp`) are kept; an existing log JSON marks the order
   as delivered and it is skipped unless overwrite is chosen; skipped = AI

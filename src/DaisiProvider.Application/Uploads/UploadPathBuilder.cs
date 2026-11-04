@@ -9,10 +9,10 @@ namespace DaisiProvider.Application.Uploads;
 public sealed partial class UploadPathBuilder
 {
     public const string DefaultFilesTemplate =
-        @"{root}\{computer}\data\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}";
+        @"{root}\{computer}\Data\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}";
 
     public const string DefaultLogTemplate =
-        @"{root}\{computer}\logs\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}.json";
+        @"{root}\{computer}\Logs\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}.json";
 
     public static IReadOnlyList<string> Tokens { get; } =
         ["{root}", "{computer}", "{project}", "{yyyy}", "{MM}", "{dd}", "{OrderId}", "{OrderTime}"];

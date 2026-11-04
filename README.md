@@ -2,9 +2,10 @@
 
 DaisiProvider is a Windows application for monitoring daily production
 folders, copying order pictures from ZIP files to local or network storage,
-and writing a DAISI log JSON for each order. Current milestone provides a
-desktop UI that copies the selected files of one ZIP or a whole archive
-folder and then writes the log JSON.
+and writing a DAISI log JSON for each order. It is a desktop application
+that watches a local archive folder while it is open, or delivers ZIPs by
+hand. Press F1 in the app for the full user help, including every field of
+the log JSON.
 
 ## Version and releases
 
@@ -36,6 +37,8 @@ only), and Computer must be changed to the new PC's name.
 - 1.0.0: first release. Upload of one ZIP or an archive folder to a local
   or network destination, configurable copy rules, path layout and DAISI
   log JSON.
+- 1.1.0: folder monitor with retries and a persistent finished list,
+  compact window with left menu, F1 help.
 
 ## Architecture
 
@@ -46,11 +49,13 @@ only), and Computer must be changed to the new PC's name.
   reading, file copying, log JSON writing, the settings file and in-memory
   progress.
 - `DaisiProvider.Worker` provides a one-ZIP command-line test entry point.
-- `DaisiProvider.Desktop` provides the Upload test UI.
+- `DaisiProvider.Desktop` provides the window. Its user help lives in
+  `src/DaisiProvider.Desktop/Help/*.md`: Markdown files built into the app
+  and shown with F1. Keep them in step with the code.
 - `tests/DaisiProvider.Tests` holds xUnit tests for copy rules, ZIP and
-  report reading, the log builder, the processing order and the settings
-  file.
-- `.vscode/launch.json` starts the Upload UI or command-line Worker.
+  report reading, the log builder, the processing order, the settings
+  file and the monitor, including an end-to-end run with real files.
+- `.vscode/launch.json` starts the desktop app or command-line Worker.
 
 ## What happens to one ZIP
 
@@ -63,8 +68,8 @@ only), and Computer must be changed to the new PC's name.
    a report, the order ID in the name must equal `OrderId` in the report.
 3. Build the destination paths from the path layout (see "Path layout"
    below). Default, the same for a local root and a network share:
-   - files: `<root>\<computer>\data\<yyyy>\<MM>\<dd>\<OrderId>_<yyyyMMddHHmmss>\`
-   - log: `<root>\<computer>\logs\<yyyy>\<MM>\<dd>\<OrderId>_<yyyyMMddHHmmss>.json`
+   - files: `<root>\<computer>\Data\<yyyy>\<MM>\<dd>\<OrderId>_<yyyyMMddHHmmss>\`
+   - log: `<root>\<computer>\Logs\<yyyy>\<MM>\<dd>\<OrderId>_<yyyyMMddHHmmss>.json`
    - `<yyyyMMddHHmmss>` is the time from the ZIP file name (the
      producer's local end time), as the user decided. The DAISI
      documentation asks for the UTC start time here instead.
@@ -105,9 +110,9 @@ Without a settings file the defaults are: `raw` with `bmp, png, jpg`
 archives store pictures as BMP under `raw` and one `<picture>_result.txt`
 per picture under `result`.
 
-The window has three tabs. **Upload** holds source, destination, preview
-and progress. **Copy rules** holds the rule list. **JSON rules** holds the
-DAISI log values that are not inside the ZIP.
+The window has a left menu with five pages: **Monitor**, **Manual
+upload**, **Destination**, **Copy rules** and **JSON rules**, which holds
+the DAISI log values that are not inside the ZIP.
 
 The destination is either a **Local PC path** (root folder) or a
 **Network share** (UNC path, user, password). **Test connection** logs in
@@ -116,7 +121,7 @@ project names apply to both kinds.
 
 ### Path layout
 
-The Upload tab holds two templates, one for the files folder and one for
+The Destination page holds two templates, one for the files folder and one for
 the log JSON file. Both are shared by Local and Network. Token buttons
 insert at the cursor; the preview shows an example order.
 
@@ -135,13 +140,39 @@ orders would overwrite each other), and the log template ends in `.json`.
 checked on its own, so a value can neither add folders nor climb out of
 the root. Unknown tokens are refused. An empty template uses the default.
 
-**Save settings** (on every tab) stores rules, destination and JSON rules
-in `%ProgramData%\DaisiProvider\settings.json`. ProgramData was chosen so
+**Save settings** stores all pages in
+`%ProgramData%\DaisiProvider\settings.json`. ProgramData was chosen so
 a later Windows service can read the same file without a logged-in user.
 The network password is stored encrypted with Windows DPAPI for this
 machine: the app and a later service on this PC can read it, a copy of
 the file on another PC cannot. The command-line Worker reads the same file
 but always takes a local destination from its arguments.
+
+## Folder monitor
+
+The ZIPs are always local; only the copy target may be on the network. So
+the monitor scans `<folder>\yyyy\MM\dd\*.zip` at a settable interval
+(default 60 s) rather than using file events, and a scan also picks up
+ZIPs created while the app was closed. It reads only the day folders from
+the later of **Process ZIPs from** and today minus **Look back days**
+(default 30). Older folders are neither read nor shown, which also keeps
+the scan work small.
+
+ZIPs run one at a time, oldest first, through the same steps as a manual
+upload. After a failure a ZIP is retried three times, five minutes apart,
+and then waits for a manual retry.
+
+The destination cannot tell whether an order was delivered, because the
+server moves delivered orders to the cloud and the log JSON disappears. So
+finished ZIPs are stored by file name in
+`%ProgramData%\DaisiProvider\processed.json`, written with a temporary file
+and rename. If that list cannot be read the monitor processes nothing,
+since an empty list would resend every order in range.
+
+**Start** saves all settings and takes a snapshot of them; changes apply
+after Stop and Start. A running monitor starts again with the app. Stop
+cancels the current ZIP, which writes no JSON and runs again later. While
+the monitor runs, Manual upload is off so one ZIP cannot run twice.
 
 ## DAISI log JSON
 
@@ -165,20 +196,20 @@ Values from the **JSON rules** tab: `Machine.Plant` (mandatory),
 `Machine.Cam`, `.Chamber`, `.Equipment`, `Project` (mandatory, must equal
 the DAISI Models path), and the prediction type. Processing refuses to
 start while a mandatory value is missing. `Machine.ComputerID` is the
-computer name from the Upload tab; the computer name is kept in that one
+computer name from the Destination page; the name is kept in that one
 place only.
 
 The DAISI project may contain tokens that are filled per picture:
 `{position}` (number before `#` in the picture name), `{computer}` and
-`{project}` (computer and project names from the Upload tab), e.g.
+`{project}` (computer and project names from the Destination page), e.g.
 `{project}/{computer}/{position}`. If a token cannot
 be filled for any picture of the order, the order fails before copying,
 because a wrong project makes the picture unavailable for labelling.
 Unknown tokens count as a missing setting.
 
 `ImagePath` is the full destination path of the picture with `/`, e.g.
-`//srvlme04/presqual-ingoing/<computer>/data/2026/10/29/<order>/<file>`
-for a share or `D:/Data/uploadtest/<computer>/data/...` for a local root
+`//srvlme04/presqual-ingoing/<computer>/Data/2026/10/29/<order>/<file>`
+for a share or `D:/Data/uploadtest/<computer>/Data/...` for a local root
 (default layout).
 
 One `Data[]` entry is written per copied picture (bmp, png, jpg, jpeg, tif,
@@ -219,10 +250,11 @@ Requirement sources:
 ## Test
 
 Start `DaisiProvider Upload GUI` in VS Code (F5). On **JSON rules** enter
-at least Plant and DAISI project, then save. On **Upload** select a ZIP
-and choose **Copy this ZIP**, or select an archive root folder and choose
-**Process folder**, which processes every ZIP below it one after another
-and lists failures at the end.
+at least Plant and DAISI project, then save. On **Manual upload** select a
+ZIP and choose **Copy this ZIP**, or select an archive root folder and
+choose **Process folder**, which processes every ZIP below it one after
+another and lists failures at the end. On **Monitor** choose the archive
+folder and press **Start**.
 
 Progress stays in memory while the GUI runs. Re-running a partially copied
 order resumes from its file count. Closing the app clears progress; copied
@@ -231,5 +263,5 @@ files remain.
 VS Code also offers `Upload one ZIP (command line)`. Unit tests run with
 `dotnet test DaisiProvider.sln`.
 
-This milestone does not monitor folders continuously, retry automatically,
-copy to several destinations, or run as a Windows service.
+The app does not yet copy to several destinations or run as a Windows
+service, so the monitor works only while the window is open.

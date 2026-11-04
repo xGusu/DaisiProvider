@@ -43,6 +43,22 @@ public interface IModelCatalog
     Task<ModelInfo?> FindAsync(string modelsRoot, string position, CancellationToken cancellationToken);
 }
 
+public sealed record ZipCandidate(string ZipPath, DateOnly FolderDate);
+
+public interface IZipFolderScanner
+{
+    // ZIPs in the day folders from..to, oldest day first. A missing root throws.
+    IReadOnlyList<ZipCandidate> Scan(string rootFolder, DateOnly from, DateOnly to);
+}
+
+public interface IProcessedOrderStore
+{
+    // Names of finished ZIPs. An unreadable list throws: treating it as empty would send orders twice.
+    Task<IReadOnlyCollection<string>> LoadAsync(CancellationToken cancellationToken);
+
+    Task AddAsync(string zipName, UploadStage result, CancellationToken cancellationToken);
+}
+
 public interface IUploadDestinationAccess
 {
     // Network: logs in to the share without a drive letter; the connection is reused and left open.

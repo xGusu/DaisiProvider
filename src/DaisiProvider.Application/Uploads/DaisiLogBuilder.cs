@@ -313,8 +313,8 @@ public sealed class DaisiLogBuilder(TimeZoneInfo localTimeZone)
         return testTimes;
     }
 
-    // Full destination path with '/' (user decision, T023): a share gives //server/share/data/...,
-    // a local root gives D:/.../data/...
+    // Full destination path with '/' (user decision, T023): a share gives //server/share/Data/...,
+    // a local root gives D:/.../Data/...
     private static string ImageBasePath(UploadOutputPaths outputPaths) =>
         Path.GetFullPath(outputPaths.PictureDirectory).Replace('\\', '/').TrimEnd('/');
 

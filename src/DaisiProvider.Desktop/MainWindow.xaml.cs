@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace DaisiProvider.Desktop;
 
@@ -21,24 +23,53 @@ public partial class MainWindow : System.Windows.Window
     private static string AppVersion { get; } =
         typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "unknown";
 
+    // Finished rows kept in the queue view; the finished list on disk is complete.
+    private const int MaxFinishedRows = 200;
+
     private readonly InMemoryUploadProgressStore progressStore = new();
     private readonly FolderModelCatalog modelCatalog = new();
     private readonly WindowsUploadDestinationAccess destinationAccess = new();
     private readonly JsonUploadSettingsStore settingsStore = new(JsonUploadSettingsStore.DefaultPath);
+    private readonly JsonProcessedOrderStore processedStore = new(JsonProcessedOrderStore.DefaultPath);
+    private readonly UploadFolderMonitor monitor;
     private readonly ObservableCollection<CopyRuleRow> copyRules =
         new(CopySelection.DefaultRules.Select(CopyRuleRow.FromRule));
+    private readonly ObservableCollection<MonitorRow> monitorRows = [];
+    private readonly Dictionary<string, MonitorRow> monitorRowsByZip = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? activeCancellation;
+    private CancellationTokenSource? monitorCancellation;
+    private Task? monitorTask;
+    private bool resumeMonitor;
+    private HelpWindow? helpWindow;
     private TextBox? lastTemplateBox;
 
     public MainWindow()
     {
         InitializeComponent();
         Title = $"DaisiProvider {AppVersion}";
+        VersionTextBlock.Text = $"Version {AppVersion}";
+        NavList.SelectedIndex = 0;
+
+        monitor = new UploadFolderMonitor(new DatedFolderZipScanner(), processedStore, TimeProvider.System);
+        monitor.ItemChanged += item => Dispatcher.BeginInvoke(() => ApplyQueueItem(item));
+        monitor.StatusChanged += status => Dispatcher.BeginInvoke(() => ApplyMonitorStatus(status));
+        MonitorGrid.ItemsSource = monitorRows;
+        ProcessFromDatePicker.SelectedDate = DateTime.Today;
+        LookBackDaysTextBox.Text = UploadMonitorSettings.DefaultLookBackDays.ToString();
+        ScanIntervalTextBox.Text = UploadMonitorSettings.DefaultScanIntervalSeconds.ToString();
+        Closing += (_, _) => monitorCancellation?.Cancel();
 
         CopyRulesGrid.ItemsSource = copyRules;
         PredictionTypeComboBox.ItemsSource = DaisiLogSettings.PredictionTypes;
         ApplyLogSettings(DaisiLogSettings.Default);
-        Loaded += async (_, _) => await LoadSettingsAsync();
+        Loaded += async (_, _) =>
+        {
+            await LoadSettingsAsync();
+            if (resumeMonitor)
+            {
+                await StartMonitorAsync();
+            }
+        };
 
         ComputerNameTextBox.Text = Environment.MachineName;
         ProjectNameTextBox.Text = "Project";
@@ -59,13 +90,221 @@ public partial class MainWindow : System.Windows.Window
         ProjectNameTextBox.TextChanged += (_, _) => UpdateProjectPreview();
         foreach (var token in UploadPathBuilder.Tokens)
         {
-            var button = new Button { Content = token, Height = 26, Padding = new Thickness(8, 0, 8, 0), Margin = new Thickness(0, 0, 6, 6) };
+            var button = new Button { Content = token, Style = (Style)FindResource("TokenButton") };
             button.Click += (_, _) => InsertToken(token);
             TokenButtonsPanel.Children.Add(button);
         }
 
         UpdatePathPreview();
         UpdateProjectPreview();
+    }
+
+    private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+    {
+        FrameworkElement[] pages = [MonitorPage, ManualPage, DestinationPage, CopyRulesPage, JsonRulesPage];
+        for (var index = 0; index < pages.Length; index++)
+        {
+            pages[index].Visibility = index == NavList.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void Help_Executed(object sender, ExecutedRoutedEventArgs eventArgs)
+    {
+        // F1 opens the topic of the page on screen.
+        var topic = NavList.SelectedIndex switch
+        {
+            0 => "monitor",
+            1 => "manual",
+            2 => "destination",
+            3 => "copy-rules",
+            4 => "log-json",
+            _ => "overview"
+        };
+
+        if (helpWindow is null)
+        {
+            helpWindow = new HelpWindow { Owner = this };
+            helpWindow.Closed += (_, _) => helpWindow = null;
+            helpWindow.Show();
+        }
+
+        helpWindow.ShowTopic(topic);
+        helpWindow.Activate();
+    }
+
+    private void BrowseWatchFolder_Click(object sender, RoutedEventArgs eventArgs)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Select the local archive folder (year\\month\\day)",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            WatchFolderTextBox.Text = dialog.FolderName;
+        }
+    }
+
+    private async void MonitorStartStop_Click(object sender, RoutedEventArgs eventArgs)
+    {
+        if (monitorTask is null)
+        {
+            await StartMonitorAsync();
+        }
+        else
+        {
+            await StopMonitorAsync();
+        }
+    }
+
+    private async Task StartMonitorAsync()
+    {
+        if (activeCancellation is not null)
+        {
+            GlobalStatusTextBlock.Text = "A manual upload is running. Wait for it or cancel it first.";
+            return;
+        }
+
+        // An unreadable value stays invalid here, so Start refuses instead of guessing.
+        var settings = CurrentMonitorSettings(invalidNumber: -1, running: true);
+        var problems = settings.Problems();
+        if (problems.Count > 0)
+        {
+            GlobalStatusTextBlock.Text = string.Join(" ", problems);
+            return;
+        }
+
+        if (!TryCreateRequest("monitor", out var template, out var error))
+        {
+            GlobalStatusTextBlock.Text = $"Monitor not started: {error}";
+            return;
+        }
+
+        try
+        {
+            await SaveSettingsAsync(running: true);
+        }
+        catch (Exception exception)
+        {
+            GlobalStatusTextBlock.Text = $"Monitor not started, settings not saved: {exception.Message}";
+            return;
+        }
+
+        var request = template with { OverwriteOnRetry = false };
+        var processor = CreateProcessor();
+        ProcessZip processZip = async (zipPath, progress, cancellationToken) =>
+        {
+            try
+            {
+                return await processor.ExecuteAsync(
+                    request with { SourceZipPath = zipPath },
+                    cancellationToken,
+                    progress);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The destination may be the cause; check it again for the next ZIP.
+                destinationAccess.Forget(request.Destination);
+                throw;
+            }
+        };
+
+        var cancellation = new CancellationTokenSource();
+        monitorCancellation = cancellation;
+        monitorTask = Task.Run(() => monitor.RunAsync(settings, processZip, cancellation.Token));
+        SetMonitorUiState(isRunning: true);
+        GlobalStatusTextBlock.Text = "Monitor started. Changed settings apply after Stop and Start.";
+    }
+
+    private async Task StopMonitorAsync()
+    {
+        MonitorStartStopButton.IsEnabled = false;
+        MonitorStartStopButton.Content = "Stopping...";
+        monitorCancellation?.Cancel();
+        try
+        {
+            if (monitorTask is not null)
+            {
+                await monitorTask;
+            }
+        }
+        catch (Exception exception)
+        {
+            GlobalStatusTextBlock.Text = $"Monitor stopped with an error: {exception.Message}";
+        }
+
+        monitorCancellation?.Dispose();
+        monitorCancellation = null;
+        monitorTask = null;
+        SetMonitorUiState(isRunning: false);
+
+        try
+        {
+            await SaveSettingsAsync(running: false);
+        }
+        catch (Exception exception)
+        {
+            GlobalStatusTextBlock.Text = $"Stopped, but the state was not saved: {exception.Message}";
+        }
+    }
+
+    private void SetMonitorUiState(bool isRunning)
+    {
+        MonitorStartStopButton.IsEnabled = true;
+        MonitorStartStopButton.Content = isRunning ? "Stop" : "Start";
+        MonitorSettingsPanel.IsEnabled = !isRunning;
+        SetProcessingState(activeCancellation is not null);
+    }
+
+    private void MonitorRetry_Click(object sender, RoutedEventArgs eventArgs)
+    {
+        if (MonitorGrid.SelectedItem is MonitorRow { CanRetry: true } row)
+        {
+            monitor.Retry(row.ZipPath);
+        }
+        else
+        {
+            GlobalStatusTextBlock.Text = "Select a failed ZIP in the list first.";
+        }
+    }
+
+    private void ApplyQueueItem(MonitorQueueItem item)
+    {
+        if (!monitorRowsByZip.TryGetValue(item.ZipPath, out var row))
+        {
+            row = new MonitorRow(item.ZipPath, item.FolderDate);
+            monitorRowsByZip[item.ZipPath] = row;
+            monitorRows.Insert(0, row);
+        }
+
+        row.Update(item);
+        var finishedRows = monitorRows.Where(entry => entry.IsFinished).ToArray();
+        foreach (var oldRow in finishedRows.Skip(MaxFinishedRows))
+        {
+            monitorRows.Remove(oldRow);
+            monitorRowsByZip.Remove(oldRow.ZipPath);
+        }
+
+        var failed = monitorRows.Count(entry => entry.Stage == UploadStage.Failed);
+        var retrying = monitorRows.Count(entry => entry.Stage == UploadStage.RetryScheduled);
+        var waiting = monitorRows.Count - finishedRows.Length - failed - retrying;
+        MonitorSummaryTextBlock.Text =
+            $"{finishedRows.Length} done, {waiting} in progress or waiting, {retrying} retrying, {failed} failed";
+    }
+
+    private void ApplyMonitorStatus(MonitorStatus status)
+    {
+        MonitorStateTextBlock.Text = status.Running ? "Running" : "Stopped";
+        MonitorStateTextBlock.Foreground = status.Running
+            ? (Brush)FindResource("AccentBrush")
+            : (Brush)FindResource("TextBrush");
+        MonitorLastScanTextBlock.Text = status.LastScanUtc is DateTimeOffset lastScan
+            ? $"Last scan {lastScan.ToLocalTime():HH:mm:ss}"
+            : string.Empty;
+        if (status.Problem is not null)
+        {
+            GlobalStatusTextBlock.Text = status.Problem;
+        }
     }
 
     private void InsertProjectToken_Click(object sender, RoutedEventArgs eventArgs)
@@ -133,19 +372,19 @@ public partial class MainWindow : System.Windows.Window
     {
         var share = CurrentNetworkShare();
         TestConnectionButton.IsEnabled = false;
-        StatusTextBlock.Text = $"Connecting to {share.SharePath}...";
+        GlobalStatusTextBlock.Text = $"Connecting to {share.SharePath}...";
         try
         {
             // Test with the values on screen, not a connection remembered from an earlier run.
             var destination = CurrentDestination();
             destinationAccess.Forget(destination);
             await destinationAccess.PrepareAsync(destination, CancellationToken.None);
-            StatusTextBlock.Text = $"Connected: {share.NormalizedPath()} exists and is writable.";
+            GlobalStatusTextBlock.Text = $"Connected: {share.NormalizedPath()} exists and is writable.";
         }
         catch (Exception exception)
         {
             // async void: an escaping exception would end the app.
-            StatusTextBlock.Text = $"Connection failed: {exception.Message}";
+            GlobalStatusTextBlock.Text = $"Connection failed: {exception.Message}";
         }
         finally
         {
@@ -160,7 +399,7 @@ public partial class MainWindow : System.Windows.Window
             var settings = await settingsStore.LoadAsync(CancellationToken.None);
             if (settings is null)
             {
-                SettingsPathTextBlock.Text =
+                GlobalStatusTextBlock.Text =
                     $"No settings file yet; defaults shown. Save creates {settingsStore.SettingsPath}";
                 return;
             }
@@ -182,16 +421,22 @@ public partial class MainWindow : System.Windows.Window
             }
 
             ApplyLogSettings(settings.DaisiLog ?? DaisiLogSettings.Default);
-            SettingsPathTextBlock.Text = $"Settings loaded from {settingsStore.SettingsPath}";
+            if (settings.Monitor is { } monitorSettings)
+            {
+                WatchFolderTextBox.Text = monitorSettings.WatchFolder ?? string.Empty;
+                ProcessFromDatePicker.SelectedDate =
+                    monitorSettings.ProcessFromDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+                LookBackDaysTextBox.Text = monitorSettings.LookBackDays.ToString();
+                ScanIntervalTextBox.Text = monitorSettings.ScanIntervalSeconds.ToString();
+                resumeMonitor = monitorSettings.Running;
+            }
+
+            GlobalStatusTextBlock.Text = $"Settings loaded from {settingsStore.SettingsPath}";
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            SettingsPathTextBlock.Text = $"Settings not loaded; defaults shown. {exception.Message}";
-        }
-        finally
-        {
-            LogSettingsStatusTextBlock.Text = SettingsPathTextBlock.Text;
+            GlobalStatusTextBlock.Text = $"Settings not loaded; defaults shown. {exception.Message}";
         }
     }
 
@@ -199,22 +444,39 @@ public partial class MainWindow : System.Windows.Window
     {
         try
         {
-            var settings = new UploadAppSettings(
-                CurrentDestination(),
-                CurrentCopyRules(),
-                CurrentLogSettings());
-            await settingsStore.SaveAsync(settings, CancellationToken.None);
-            SettingsPathTextBlock.Text = $"Settings saved to {settingsStore.SettingsPath}";
+            await SaveSettingsAsync(running: monitorTask is not null);
+            GlobalStatusTextBlock.Text = $"Settings saved to {settingsStore.SettingsPath}";
         }
         catch (Exception exception)
         {
             // async void: an escaping exception (e.g. password encryption) would end the app.
-            SettingsPathTextBlock.Text = $"Settings not saved: {exception.Message}";
+            GlobalStatusTextBlock.Text = $"Settings not saved: {exception.Message}";
         }
+    }
 
-        // Save exists on several tabs; mirror the result where the user clicked.
-        StatusTextBlock.Text = SettingsPathTextBlock.Text;
-        LogSettingsStatusTextBlock.Text = SettingsPathTextBlock.Text;
+    private Task SaveSettingsAsync(bool running) =>
+        settingsStore.SaveAsync(
+            new UploadAppSettings(
+                CurrentDestination(),
+                CurrentCopyRules(),
+                CurrentLogSettings(),
+                CurrentMonitorSettings(invalidNumber: null, running)),
+            CancellationToken.None);
+
+    // invalidNumber replaces an unreadable number; null falls back to the default values.
+    private UploadMonitorSettings CurrentMonitorSettings(int? invalidNumber, bool running)
+    {
+        return new UploadMonitorSettings(
+            EmptyToNull(WatchFolderTextBox.Text),
+            ProcessFromDatePicker.SelectedDate is DateTime date
+                ? DateOnly.FromDateTime(date)
+                : DateOnly.FromDateTime(DateTime.Today),
+            ReadNumber(LookBackDaysTextBox, invalidNumber ?? UploadMonitorSettings.DefaultLookBackDays),
+            ReadNumber(ScanIntervalTextBox, invalidNumber ?? UploadMonitorSettings.DefaultScanIntervalSeconds),
+            running);
+
+        static int ReadNumber(TextBox box, int fallback) =>
+            int.TryParse(box.Text.Trim(), out var value) ? value : fallback;
     }
 
     private void AddCopyRule_Click(object sender, RoutedEventArgs eventArgs)
@@ -365,6 +627,7 @@ public partial class MainWindow : System.Windows.Window
                 request,
                 cancellation.Token,
                 observer);
+            await RecordFinishedAsync(request.SourceZipPath, result);
             UpdateProgress(result);
             StatusTextBlock.Text = DescribeResult(result);
         }
@@ -449,6 +712,7 @@ public partial class MainWindow : System.Windows.Window
                             $"Processing {index + 1}/{zipPaths.Length}: {Path.GetFileName(zipPath)} ({progress.Stage})";
                     });
                     var result = await processor.ExecuteAsync(request, cancellation.Token, observer);
+                    await RecordFinishedAsync(zipPath, result);
                     UpdateProgress(result);
                     if (result.Stage == UploadStage.AlreadyDelivered)
                     {
@@ -506,7 +770,7 @@ public partial class MainWindow : System.Windows.Window
         var missing = logSettings.MissingMandatoryValues();
         if (missing.Count > 0)
         {
-            error = $"Fill in on the JSON rules tab: {string.Join(", ", missing)}.";
+            error = $"Fill in on the JSON rules page: {string.Join(", ", missing)}.";
             return false;
         }
 
@@ -544,10 +808,16 @@ public partial class MainWindow : System.Windows.Window
             modelCatalog,
             destinationAccess);
 
+    // A delivered order must not be sent again by the monitor, even after its JSON has left the destination.
+    private Task RecordFinishedAsync(string zipPath, UploadProgress result) =>
+        processedStore.AddAsync(Path.GetFileName(zipPath), result.Stage, CancellationToken.None);
+
+    // The monitor and a manual upload could process the same ZIP, so only one runs at a time.
     private void SetProcessingState(bool isProcessing)
     {
-        ProcessButton.IsEnabled = !isProcessing;
-        ProcessFolderButton.IsEnabled = !isProcessing;
+        var canStart = !isProcessing && monitorTask is null;
+        ProcessButton.IsEnabled = canStart;
+        ProcessFolderButton.IsEnabled = canStart;
         CancelButton.IsEnabled = isProcessing;
     }
 

@@ -8,6 +8,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Help\*.md" LogicalName="Help.%(Filename).md" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\DaisiProvider.Application\DaisiProvider.Application.csproj" />
     <ProjectReference Include="..\DaisiProvider.Infrastructure\DaisiProvider.Infrastructure.csproj" />
   </ItemGroup>

@@ -6,6 +6,13 @@ namespace DaisiProvider.Infrastructure.Uploads;
 
 public sealed class JsonUploadSettingsStore(string settingsPath) : IUploadSettingsStore
 {
+    // Default layout before T034. A saved copy moves to the new default; a changed template stays.
+    private const string OldDefaultFilesTemplate =
+        @"{root}\{computer}\data\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}";
+
+    private const string OldDefaultLogTemplate =
+        @"{root}\{computer}\logs\{yyyy}\{MM}\{dd}\{OrderId}_{OrderTime}.json";
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true,
@@ -35,7 +42,7 @@ public sealed class JsonUploadSettingsStore(string settingsPath) : IUploadSettin
                 SerializerOptions,
                 cancellationToken)
                 ?? throw new InvalidDataException($"Settings file is empty: {SettingsPath}");
-            return UnprotectPassword(settings);
+            return UnprotectPassword(UseCurrentDefaultLayout(settings));
         }
         catch (JsonException exception)
         {
@@ -66,6 +73,28 @@ public sealed class JsonUploadSettingsStore(string settingsPath) : IUploadSettin
         }
 
         File.Move(temporaryPath, SettingsPath, overwrite: true);
+    }
+
+    private static UploadAppSettings UseCurrentDefaultLayout(UploadAppSettings settings)
+    {
+        var destination = settings.Destination;
+        if (destination is null)
+        {
+            return settings;
+        }
+
+        return settings with
+        {
+            Destination = destination with
+            {
+                FilesTemplate = destination.FilesTemplate == OldDefaultFilesTemplate
+                    ? UploadPathBuilder.DefaultFilesTemplate
+                    : destination.FilesTemplate,
+                LogTemplate = destination.LogTemplate == OldDefaultLogTemplate
+                    ? UploadPathBuilder.DefaultLogTemplate
+                    : destination.LogTemplate
+            }
+        };
     }
 
     private static UploadAppSettings ProtectPassword(UploadAppSettings settings) =>

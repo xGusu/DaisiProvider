@@ -2,475 +2,467 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="DaisiProvider"
-        Width="860"
-        Height="760"
-        MinWidth="700"
-        MinHeight="620"
+        Width="960"
+        Height="640"
+        MinWidth="780"
+        MinHeight="500"
+        FontFamily="Segoe UI"
+        FontSize="12.5"
+        Foreground="{StaticResource TextBrush}"
+        Background="{StaticResource PageBrush}"
         WindowStartupLocation="CenterScreen">
-    <Grid Margin="16">
-        <TabControl>
-            <TabItem Header="Upload" Padding="14,6">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+    <Window.CommandBindings>
+        <CommandBinding Command="Help" Executed="Help_Executed" />
+    </Window.CommandBindings>
 
-                    <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock Text="Upload" FontSize="26" FontWeight="SemiBold" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#606060"
-                                   Text="Copy selected files from one order ZIP or a whole archive folder, then write the DAISI log JSON. Order ID and time come from order_report.json." />
-                    </StackPanel>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <!-- Left menu -->
+        <DockPanel Grid.Column="0" Background="{StaticResource NavBrush}">
+            <TextBlock DockPanel.Dock="Top"
+                       Text="DaisiProvider"
+                       Foreground="White"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       Margin="14,14,14,12" />
+            <TextBlock x:Name="VersionTextBlock"
+                       DockPanel.Dock="Bottom"
+                       Foreground="{StaticResource NavTextBrush}"
+                       FontSize="11"
+                       Margin="14,4,14,10" />
+            <Button DockPanel.Dock="Bottom"
+                    Content="Help   F1"
+                    Margin="14,4"
+                    Background="Transparent"
+                    Foreground="{StaticResource NavTextBrush}"
+                    BorderBrush="{StaticResource NavHoverBrush}"
+                    Command="Help" />
+            <ListBox x:Name="NavList"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ItemContainerStyle="{StaticResource NavItem}"
+                     SelectionChanged="NavList_SelectionChanged">
+                <ListBoxItem Content="Monitor" />
+                <ListBoxItem Content="Manual upload" />
+                <ListBoxItem Content="Destination" />
+                <ListBoxItem Content="Copy rules" />
+                <ListBoxItem Content="JSON rules" />
+            </ListBox>
+        </DockPanel>
+
+        <!-- Pages and bottom bar -->
+        <Grid Grid.Column="1" Margin="14,12,14,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Monitor -->
+            <Grid x:Name="MonitorPage" Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Monitor" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="Watches the local archive folder (year\month\day) and delivers each new ZIP. Runs while this app is open." />
+                </StackPanel>
+
+                <Border Grid.Row="1" Style="{StaticResource Card}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="MonitorSettingsPanel" Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="Monitored folder" Style="{StaticResource FieldLabel}" />
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="WatchFolderTextBox" />
+                                <Button Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="BrowseWatchFolder_Click" />
+                            </Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <StackPanel Width="170" Margin="0,0,10,0">
+                                    <TextBlock Text="Process ZIPs from" Style="{StaticResource FieldLabel}" />
+                                    <DatePicker x:Name="ProcessFromDatePicker"
+                                                ToolTip="ZIPs in day folders before this date are never touched" />
+                                </StackPanel>
+                                <StackPanel Width="90" Margin="0,0,10,0">
+                                    <TextBlock Text="Look back days" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="LookBackDaysTextBox"
+                                             ToolTip="Day folders older than this many days are not read" />
+                                </StackPanel>
+                                <StackPanel Width="90">
+                                    <TextBlock Text="Scan every (s)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ScanIntervalTextBox" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Width="170" VerticalAlignment="Center">
+                            <TextBlock x:Name="MonitorStateTextBlock"
+                                       Text="Stopped"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,2" />
+                            <TextBlock x:Name="MonitorLastScanTextBlock"
+                                       Style="{StaticResource MutedText}"
+                                       FontSize="11.5"
+                                       Margin="0,0,0,6" />
+                            <Button x:Name="MonitorStartStopButton"
+                                    Content="Start"
+                                    Height="30"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="MonitorStartStop_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <DataGrid x:Name="MonitorGrid"
+                          Grid.Row="2"
+                          IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Day" Binding="{Binding Day}" Width="85" />
+                        <DataGridTextColumn Header="Order" Binding="{Binding Order}" Width="170" />
+                        <DataGridTextColumn Header="Files" Binding="{Binding Files}" Width="60" />
+                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="140" />
+                        <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <DockPanel Grid.Row="3" Margin="0,8,0,0">
+                    <Button x:Name="MonitorRetryButton"
+                            DockPanel.Dock="Right"
+                            Content="Retry selected"
+                            ToolTip="Retry a failed ZIP now"
+                            Click="MonitorRetry_Click" />
+                    <TextBlock x:Name="MonitorSummaryTextBlock"
+                               Style="{StaticResource MutedText}"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+            </Grid>
+
+            <!-- Manual upload -->
+            <ScrollViewer x:Name="ManualPage" Grid.Row="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Manual upload" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="Deliver one ZIP or a whole archive folder by hand. Not available while the monitor runs." />
+
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="One order ZIP" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="ZipPathTextBox" Grid.Row="1" />
+                            <Button Grid.Row="1" Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="BrowseZip_Click" />
+                            <Button x:Name="ProcessButton"
+                                    Grid.Row="1" Grid.Column="2"
+                                    Content="Copy this ZIP"
+                                    Width="120"
+                                    Margin="6,0,0,0"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="Process_Click" />
+                            <TextBlock Grid.Row="2" Text="Archive folder (all ZIPs below it)" Style="{StaticResource FieldLabel}" Margin="0,8,0,2" />
+                            <TextBox x:Name="ArchiveFolderTextBox" Grid.Row="3" />
+                            <Button Grid.Row="3" Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="BrowseArchiveFolder_Click" />
+                            <Button x:Name="ProcessFolderButton"
+                                    Grid.Row="3" Grid.Column="2"
+                                    Content="Process folder"
+                                    Width="120"
+                                    Margin="6,0,0,0"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="ProcessFolder_Click" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <GroupBox Header="Source ZIP" Padding="12" Margin="0,0,0,14">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="ZipPathTextBox"
-                                             Grid.Column="0"
-                                             Height="32"
-                                             VerticalContentAlignment="Center"
-                                             ToolTip="ZIP containing order_report.json and files matching the copy rules" />
-                                    <Button Grid.Column="1"
-                                            Content="Browse..."
-                                            Width="100"
-                                            Height="32"
-                                            Margin="10,0,0,0"
-                                            Click="BrowseZip_Click" />
-                                </Grid>
-                            </GroupBox>
-
-                            <GroupBox Header="Archive folder (year\month\day)" Padding="12" Margin="0,0,0,14">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="ArchiveFolderTextBox"
-                                             Grid.Column="0"
-                                             Height="32"
-                                             VerticalContentAlignment="Center"
-                                             ToolTip="Folder containing dated folders with order ZIP archives" />
-                                    <Button Grid.Column="1"
-                                            Content="Browse..."
-                                            Width="100"
-                                            Height="32"
-                                            Margin="10,0,0,0"
-                                            Click="BrowseArchiveFolder_Click" />
-                                </Grid>
-                            </GroupBox>
-
-                            <GroupBox Header="Destination" Padding="12" Margin="0,0,0,14">
-                                <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                    <RadioButton x:Name="LocalDestinationRadioButton"
-                                                 Content="Local PC path"
-                                                 GroupName="DestinationKind"
-                                                 IsChecked="True"
-                                                 Margin="0,0,24,0"
-                                                 Checked="DestinationKind_Changed" />
-                                    <RadioButton x:Name="NetworkDestinationRadioButton"
-                                                 Content="Network share"
-                                                 GroupName="DestinationKind"
-                                                 Checked="DestinationKind_Changed" />
-                                </StackPanel>
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="110" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                        <TextBlock Text="Computer ({computer})" Margin="0,0,0,5" />
-                                        <TextBox x:Name="ComputerNameTextBox"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                        <TextBlock Text="Project ({project}, only if used in layout)" Margin="0,0,0,5" />
-                                        <TextBox x:Name="ProjectNameTextBox"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid x:Name="NetworkDestinationPanel" Visibility="Collapsed">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,12">
-                                        <TextBlock Text="Network path, e.g. \\srvlme04\presqual-ingoing (files go to path\computer\data and \logs)" Margin="0,0,0,5" />
-                                        <TextBox x:Name="NetworkPathTextBox"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center"
-                                                 ToolTip="No drive letter needed. The computer folder is added, the project folder is not. The path must exist and be writable." />
-                                    </StackPanel>
-                                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,0">
-                                        <TextBlock Text="User (e.g. DOMAIN\user; empty = current account)" Margin="0,0,0,5" />
-                                        <TextBox x:Name="NetworkUserTextBox"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,10,0">
-                                        <TextBlock Text="Password (saved encrypted)" Margin="0,0,0,5" />
-                                        <PasswordBox x:Name="NetworkPasswordBox"
-                                                     Height="32"
-                                                     VerticalContentAlignment="Center" />
-                                    </StackPanel>
-                                    <Button x:Name="TestConnectionButton"
-                                            Grid.Row="1" Grid.Column="2"
-                                            Content="Test connection"
-                                            Width="110"
-                                            Height="32"
-                                            VerticalAlignment="Bottom"
-                                            Click="TestConnection_Click" />
-                                    <Button Grid.Row="2" Grid.Column="2"
-                                            Content="Save settings"
-                                            Width="110"
-                                            Height="32"
-                                            Margin="0,12,0,0"
-                                            ToolTip="Save destination, copy rules and JSON rules"
-                                            Click="SaveSettings_Click" />
-                                </Grid>
-                                <Grid x:Name="LocalDestinationPanel">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-                                                Margin="0,0,10,12">
-                                        <TextBlock Text="Destination root" Margin="0,0,0,5" />
-                                        <TextBox x:Name="DestinationRootTextBox"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center" />
-                                    </StackPanel>
-                                    <Button Grid.Row="0" Grid.Column="2"
-                                            Content="Browse..."
-                                            Width="100"
-                                            Height="32"
-                                            Margin="0,20,0,0"
-                                            Click="BrowseDestination_Click" />
-                                    <Button Grid.Row="1" Grid.Column="2"
-                                            Content="Save settings"
-                                            Width="100"
-                                            Height="32"
-                                            VerticalAlignment="Bottom"
-                                            ToolTip="Save destination, copy rules and JSON rules"
-                                            Click="SaveSettings_Click" />
-                                </Grid>
-                                </StackPanel>
-                            </GroupBox>
-
-                            <GroupBox Header="Path layout (same for local and network)" Padding="12" Margin="0,0,0,14">
-                                <StackPanel>
-                                    <TextBlock Text="Files folder" Margin="0,0,0,5" />
-                                    <TextBox x:Name="FilesTemplateTextBox"
-                                             Height="32"
-                                             VerticalContentAlignment="Center"
-                                             GotFocus="TemplateTextBox_GotFocus" />
-                                    <TextBlock Text="Log JSON file (must end with .json)" Margin="0,10,0,5" />
-                                    <TextBox x:Name="LogTemplateTextBox"
-                                             Height="32"
-                                             VerticalContentAlignment="Center"
-                                             GotFocus="TemplateTextBox_GotFocus" />
-                                    <TextBlock Margin="0,10,0,5"
-                                               Foreground="#606060"
-                                               TextWrapping="Wrap"
-                                               Text="Click a token to insert it at the cursor of the last selected box. Start with {root}; {OrderId} is required. Date = order start (UTC), {OrderTime} = ZIP name time." />
-                                    <WrapPanel x:Name="TokenButtonsPanel" />
-                                    <Button Content="Reset to default"
-                                            Width="130"
-                                            Height="28"
-                                            Margin="0,8,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="ResetTemplates_Click" />
-                                </StackPanel>
-                            </GroupBox>
-
-                            <GroupBox Header="Destination preview (example order)" Padding="12" Margin="0,0,0,14">
-                                <StackPanel>
-                                    <TextBlock Text="Files" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="PicturePathPreview"
-                                               Margin="0,3,0,10"
-                                               TextWrapping="Wrap"
-                                               Foreground="#505050" />
-                                    <TextBlock Text="Log JSON (written last)" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="ReportPathPreview"
-                                               Margin="0,3,0,10"
-                                               TextWrapping="Wrap"
-                                               Foreground="#505050" />
-                                    <TextBlock Text="ImagePath in log JSON" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="ImagePathPreview"
-                                               Margin="0,3,0,0"
-                                               TextWrapping="Wrap"
-                                               Foreground="#505050" />
-                                </StackPanel>
-                            </GroupBox>
-
                             <CheckBox x:Name="OverwriteOnRetryCheckBox"
                                       Content="Overwrite: copy again from the first file and rewrite the log JSON, even if already delivered"
-                                      Margin="0,0,0,12" />
-                            <ProgressBar x:Name="CopyProgressBar"
-                                         Height="18"
-                                         Minimum="0"
-                                         Maximum="1"
-                                         Margin="0,0,0,8" />
+                                      Margin="0,0,0,8" />
+                            <ProgressBar x:Name="CopyProgressBar" Height="10" Minimum="0" Maximum="1" Margin="0,0,0,6" />
+                            <DockPanel>
+                                <Button x:Name="CancelButton"
+                                        DockPanel.Dock="Right"
+                                        Content="Cancel"
+                                        IsEnabled="False"
+                                        Click="Cancel_Click" />
+                                <TextBlock x:Name="ProgressCountTextBlock"
+                                           Text="0 / 0 files"
+                                           Style="{StaticResource MutedText}"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
                             <TextBlock x:Name="StatusTextBlock"
                                        Text="Ready"
-                                       Foreground="#505050"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,10" />
+                                       Style="{StaticResource MutedText}"
+                                       Margin="0,6,0,0" />
                         </StackPanel>
-                    </ScrollViewer>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
 
-                    <DockPanel Grid.Row="2" Margin="0,14,0,0">
-                        <TextBlock DockPanel.Dock="Left"
-                                   x:Name="ProgressCountTextBlock"
-                                   VerticalAlignment="Center"
-                                   Foreground="#505050"
-                                   Text="0 / 0 files" />
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button x:Name="CancelButton"
-                                    Content="Cancel"
-                                    Width="100"
-                                    Height="36"
-                                    Margin="0,0,10,0"
-                                    IsEnabled="False"
-                                    Click="Cancel_Click" />
-                            <Button x:Name="ProcessFolderButton"
-                                    Content="Process folder"
-                                    Width="140"
-                                    Height="36"
-                                    Margin="0,0,10,0"
-                                    Click="ProcessFolder_Click" />
-                            <Button x:Name="ProcessButton"
-                                    Content="Copy this ZIP"
-                                    Width="140"
-                                    Height="36"
-                                    IsDefault="True"
-                                    Click="Process_Click" />
-                        </StackPanel>
-                    </DockPanel>
-                </Grid>
-            </TabItem>
+            <!-- Destination -->
+            <ScrollViewer x:Name="DestinationPage" Grid.Row="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Destination" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="Where files and the log JSON go. No drive letter is needed for a network share." />
 
-            <TabItem Header="Copy rules" Padding="14,6">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <RadioButton x:Name="LocalDestinationRadioButton"
+                                             Content="Local PC path"
+                                             GroupName="DestinationKind"
+                                             IsChecked="True"
+                                             Margin="0,0,20,0"
+                                             Checked="DestinationKind_Changed" />
+                                <RadioButton x:Name="NetworkDestinationRadioButton"
+                                             Content="Network share"
+                                             GroupName="DestinationKind"
+                                             Checked="DestinationKind_Changed" />
+                            </StackPanel>
 
-                    <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock Text="Copy rules" FontSize="26" FontWeight="SemiBold" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#606060"
-                                   TextWrapping="Wrap"
-                                   Text="Choose a folder inside the ZIP and the file types to copy from it, e.g. bmp, png. Use * for all files. Empty folder = ZIP root. Subfolders are not included. All files go into one order folder." />
-                    </StackPanel>
-
-                    <DataGrid x:Name="CopyRulesGrid"
-                              Grid.Row="1"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              CanUserDeleteRows="False"
-                              HeadersVisibility="Column"
-                              SelectionMode="Single">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="Enabled"
-                                                    Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
-                                                    Width="70" />
-                            <DataGridTextColumn Header="ZIP folder"
-                                                Binding="{Binding ZipFolder}"
-                                                Width="200" />
-                            <DataGridTextColumn Header="File types"
-                                                Binding="{Binding FileTypes}"
-                                                Width="*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Add rule"
-                                Width="100"
-                                Height="32"
-                                Margin="0,0,10,0"
-                                Click="AddCopyRule_Click" />
-                        <Button Content="Remove rule"
-                                Width="100"
-                                Height="32"
-                                Margin="0,0,10,0"
-                                Click="RemoveCopyRule_Click" />
-                        <Button Content="Save settings"
-                                Width="120"
-                                Height="32"
-                                ToolTip="Save copy rules and destination"
-                                Click="SaveSettings_Click" />
-                    </StackPanel>
-
-                    <TextBlock x:Name="SettingsPathTextBlock"
-                               Grid.Row="3"
-                               Margin="0,10,0,0"
-                               Foreground="#606060"
-                               TextWrapping="Wrap" />
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="JSON rules" Padding="14,6">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="12">
-                        <TextBlock Text="JSON rules" FontSize="26" FontWeight="SemiBold" />
-                        <TextBlock Margin="0,5,0,16"
-                                   Foreground="#606060"
-                                   TextWrapping="Wrap"
-                                   Text="Values for the DAISI log JSON that are not in the ZIP. Order ID, times, steering and structural group come from order_report.json. * = mandatory." />
-
-                        <GroupBox Header="Machine" Padding="12" Margin="0,0,0,14">
-                            <Grid>
+                            <Grid x:Name="LocalDestinationPanel" Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,12">
-                                    <TextBlock Text="Plant * (3 letters, e.g. SAT)" Margin="0,0,0,5" />
-                                    <TextBox x:Name="PlantTextBox" Height="32" VerticalContentAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,12">
-                                    <TextBlock Text="Cam" Margin="0,0,0,5" />
-                                    <TextBox x:Name="CamTextBox" Height="32" VerticalContentAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,12">
-                                    <TextBlock Text="Chamber" Margin="0,0,0,5" />
-                                    <TextBox x:Name="ChamberTextBox" Height="32" VerticalContentAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,0">
-                                    <TextBlock Text="Equipment (Betriebsmittel-Nr)" Margin="0,0,0,5" />
-                                    <TextBox x:Name="EquipmentTextBox" Height="32" VerticalContentAlignment="Center" />
-                                </StackPanel>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                                           Margin="0,0,0,8"
-                                           VerticalAlignment="Bottom"
-                                           Foreground="#606060"
-                                           TextWrapping="Wrap"
-                                           Text="ComputerID = Computer on the Upload tab." />
+                                <TextBlock Text="Destination root ({root})" Style="{StaticResource FieldLabel}" />
+                                <TextBox x:Name="DestinationRootTextBox" Grid.Row="1" />
+                                <Button Grid.Row="1" Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="BrowseDestination_Click" />
                             </Grid>
-                        </GroupBox>
 
-                        <GroupBox Header="Prediction" Padding="12" Margin="0,0,0,14">
+                            <Grid x:Name="NetworkDestinationPanel" Margin="0,0,0,8" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.ColumnSpan="3" Margin="0,0,0,6">
+                                    <TextBlock Text="Network path ({root}), e.g. \\server\share" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="NetworkPathTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Margin="0,0,6,0">
+                                    <TextBlock Text="User (empty = current account)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="NetworkUserTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,6,0">
+                                    <TextBlock Text="Password (saved encrypted)" Style="{StaticResource FieldLabel}" />
+                                    <PasswordBox x:Name="NetworkPasswordBox" />
+                                </StackPanel>
+                                <Button x:Name="TestConnectionButton"
+                                        Grid.Row="1" Grid.Column="2"
+                                        Content="Test connection"
+                                        VerticalAlignment="Bottom"
+                                        Click="TestConnection_Click" />
+                            </Grid>
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="Computer ({computer})" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ComputerNameTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Project ({project}, only if used)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ProjectNameTextBox" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Reset to default" Height="22" Click="ResetTemplates_Click" />
+                                <TextBlock Text="Path layout" Style="{StaticResource CardTitle}" />
+                            </DockPanel>
+                            <TextBlock Text="Files folder" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="FilesTemplateTextBox" GotFocus="TemplateTextBox_GotFocus" Margin="0,0,0,6" />
+                            <TextBlock Text="Log JSON file (must end with .json)" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="LogTemplateTextBox" GotFocus="TemplateTextBox_GotFocus" Margin="0,0,0,6" />
+                            <WrapPanel x:Name="TokenButtonsPanel" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Preview (example order)" Style="{StaticResource CardTitle}" />
+                            <TextBlock Text="Files" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="PicturePathPreview" Style="{StaticResource PreviewText}" />
+                            <TextBlock Text="Log JSON" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="ReportPathPreview" Style="{StaticResource PreviewText}" />
+                            <TextBlock Text="ImagePath in log JSON" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="ImagePathPreview" Style="{StaticResource PreviewText}" Margin="0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Copy rules -->
+            <Grid x:Name="CopyRulesPage" Grid.Row="0" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Copy rules" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="A folder inside the ZIP and the file types to copy from it, e.g. bmp, png. * = all files. Empty folder = ZIP root. Subfolders are not included." />
+                </StackPanel>
+                <DataGrid x:Name="CopyRulesGrid" Grid.Row="1">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Enabled"
+                                                Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="70" />
+                        <DataGridTextColumn Header="ZIP folder" Binding="{Binding ZipFolder}" Width="200" />
+                        <DataGridTextColumn Header="File types" Binding="{Binding FileTypes}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Add rule" Margin="0,0,6,0" Click="AddCopyRule_Click" />
+                    <Button Content="Remove rule" Click="RemoveCopyRule_Click" />
+                </StackPanel>
+            </Grid>
+
+            <!-- JSON rules -->
+            <ScrollViewer x:Name="JsonRulesPage" Grid.Row="0" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="JSON rules" Style="{StaticResource PageTitle}" />
+                    <TextBlock Style="{StaticResource PageSubtitle}"
+                               Text="Values for the DAISI log JSON that are not in the ZIP. * = mandatory. Press F1 for every field." />
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Machine" Style="{StaticResource CardTitle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                    <TextBlock Text="DAISI project * (as in DAISI Models)" Margin="0,0,0,5" />
-                                    <TextBox x:Name="DaisiProjectTextBox"
-                                             Height="32"
-                                             VerticalContentAlignment="Center"
-                                             ToolTip="Must match the project path in the DAISI Models section, e.g. PROJECT/{computer}/{position}. Tokens are filled per picture." />
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <Button Content="{}{position}"
-                                                Height="26"
-                                                Padding="8,0"
-                                                Margin="0,0,6,0"
-                                                ToolTip="Position number before # in the picture name, e.g. 101"
-                                                Click="InsertProjectToken_Click" />
-                                        <Button Content="{}{computer}"
-                                                Height="26"
-                                                Padding="8,0"
-                                                Margin="0,0,6,0"
-                                                ToolTip="Computer name from the Upload tab"
-                                                Click="InsertProjectToken_Click" />
-                                        <Button Content="{}{project}"
-                                                Height="26"
-                                                Padding="8,0"
-                                                ToolTip="Project name from the Upload tab"
-                                                Click="InsertProjectToken_Click" />
-                                    </StackPanel>
-                                    <TextBlock x:Name="ProjectPreviewTextBlock"
-                                               Margin="0,6,0,0"
-                                               Foreground="#606060"
-                                               TextWrapping="Wrap" />
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="Plant * (3 letters)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="PlantTextBox" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                    <TextBlock Text="Prediction type *" Margin="0,0,0,5" />
-                                    <ComboBox x:Name="PredictionTypeComboBox"
-                                              Height="32"
-                                              ToolTip="Pictures whose AI test was skipped are always written as Skipped" />
+                                <StackPanel Grid.Column="1" Margin="0,0,6,0">
+                                    <TextBlock Text="Cam" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="CamTextBox" />
                                 </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,12,0,0">
-                                    <TextBlock Text="AI models root (optional): one folder per position, e.g. 101\meta.json" Margin="0,0,0,5" />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="ModelsRootTextBox"
-                                                 Grid.Column="0"
-                                                 Height="32"
-                                                 VerticalContentAlignment="Center"
-                                                 ToolTip="Picture 124#... uses folder 124. Gives ModelID (TrainID); for real AI runs also PredictionType, Threshold and Blobsize. Folders like 124_B and backup are ignored." />
-                                        <Button Grid.Column="1"
-                                                Content="Browse..."
-                                                Width="100"
-                                                Height="32"
-                                                Margin="10,0,0,0"
-                                                Click="BrowseModelsRoot_Click" />
-                                    </Grid>
+                                <StackPanel Grid.Column="2" Margin="0,0,6,0">
+                                    <TextBlock Text="Chamber" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ChamberTextBox" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3">
+                                    <TextBlock Text="Equipment (Betriebsmittel-Nr)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="EquipmentTextBox" />
                                 </StackPanel>
                             </Grid>
-                        </GroupBox>
-
-                        <Border Padding="12"
-                                Background="#FFF4E5"
-                                CornerRadius="4"
-                                Margin="0,0,0,14">
-                            <TextBlock TextWrapping="Wrap"
-                                       Text="The log JSON is the server's signal to move the order to the cloud. It is written only after all files are copied, and never when copying fails. A picture whose AI test was skipped is written as Skipped (with ModelID when its model folder exists) and without Prediction." />
-                        </Border>
-
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="Save settings"
-                                    Width="120"
-                                    Height="32"
-                                    ToolTip="Save JSON rules, copy rules and destination"
-                                    Click="SaveSettings_Click" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Margin="0,6,0,0"
+                                       Text="ComputerID = Computer on the Destination page." />
                         </StackPanel>
-                        <TextBlock x:Name="LogSettingsStatusTextBlock"
-                                   Margin="0,10,0,0"
-                                   Foreground="#606060"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Prediction" Style="{StaticResource CardTitle}" />
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="150" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="DAISI project * (as in DAISI Models)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="DaisiProjectTextBox"
+                                             ToolTip="Must match the project path in the DAISI Models section. Tokens are filled per picture." />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Prediction type *" Style="{StaticResource FieldLabel}" />
+                                    <ComboBox x:Name="PredictionTypeComboBox" />
+                                </StackPanel>
+                            </Grid>
+                            <WrapPanel>
+                                <Button Content="{}{position}"
+                                        Style="{StaticResource TokenButton}"
+                                        ToolTip="Position number before # in the picture name, e.g. 101"
+                                        Click="InsertProjectToken_Click" />
+                                <Button Content="{}{computer}"
+                                        Style="{StaticResource TokenButton}"
+                                        ToolTip="Computer from the Destination page"
+                                        Click="InsertProjectToken_Click" />
+                                <Button Content="{}{project}"
+                                        Style="{StaticResource TokenButton}"
+                                        ToolTip="Project from the Destination page"
+                                        Click="InsertProjectToken_Click" />
+                            </WrapPanel>
+                            <TextBlock x:Name="ProjectPreviewTextBlock" Style="{StaticResource PreviewText}" />
+
+                            <TextBlock Text="AI models root (optional): one folder per position, e.g. 101\meta.json" Style="{StaticResource FieldLabel}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ModelsRootTextBox"
+                                         ToolTip="Picture 124#... uses folder 124. Gives ModelID; for real AI runs also PredictionType, Threshold and Blobsize." />
+                                <Button Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="BrowseModelsRoot_Click" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Background="{StaticResource NoteBrush}">
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="The log JSON is the server's signal to move the order to the cloud. It is written only after all files are copied, and never when copying fails." />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom bar -->
+            <DockPanel Grid.Row="1" Margin="0,8,0,0">
+                <Button DockPanel.Dock="Right"
+                        Content="Save settings"
+                        Style="{StaticResource PrimaryButton}"
+                        ToolTip="Save everything on all pages"
+                        Click="SaveSettings_Click" />
+                <TextBlock x:Name="GlobalStatusTextBlock"
+                           Style="{StaticResource MutedText}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
+            </DockPanel>
+        </Grid>
     </Grid>
 </Window>

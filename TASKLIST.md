@@ -880,6 +880,106 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T032: Planning Compact UI, Folder Monitor and F1 Help
+- **Status**: Closed
+- **Description**: User wants a more compact, slick UI, a start for
+  monitoring the folder for ZIP files, and an F1 help that describes the
+  process in detail, including the JSON: what it holds, how it is made
+  and which options exist.
+- **Work Done**:
+  - 2026-11-04: Read code: `WaitUntilUnlockedAsync` already has a
+    timeout. `D:\Data\Archives` layout confirmed `yyyy\MM\dd` (50 ZIPs,
+    2026-10-21 to 10-29).
+  - Finding: the "log JSON exists" check cannot protect a monitor alone,
+    because the server moves delivered orders to the cloud and the JSON
+    may disappear; old ZIPs would be delivered again after a restart.
+    T004 already asked for persisted per-order progress.
+  - Questions sent: layout, old ZIPs at start, monitor start, polling.
+  - User decided (2026-11-04):
+    - Layout: slim left menu, Monitor as start page; Manual, Destination,
+      Copy rules, JSON rules and Help on their own pages.
+    - Old ZIPs: setting "Process ZIPs from date", default today; older
+      ZIPs ignored; app keeps its own persisted list of finished orders.
+    - Start: Start/Stop button; running state remembered and resumed
+      with the app.
+    - Scan: ZIPs are always local, only the copy target is on the
+      network. Regular scan, default 1 minute, settable. Read as: no
+      Windows file events (assumption stated in the plan).
+  - Plan approved (user, 2026-11-04). Ignored ZIPs: user wants a general
+    limit instead of showing them: setting "Look back days", default 30.
+    Scan range = later of from-date and today minus look back; older day
+    folders are not read and not shown. Build: T033.
+- **time-spent**: ~0.15 hours
+
+---
+
+## T033: Building Compact UI, Folder Monitor and F1 Help
+- **Status**: Open
+- **Description**: Implement the plan from T032. Version 1.1.0.
+- **Work Done**:
+  - 2026-11-04 Application: `UploadMonitorSettings` (from-date, look back
+    days, scan seconds, running), `UploadFolderMonitor` (`RunAsync`,
+    `ScanOnceAsync`, `Retry`; oldest first, 3 retries 5 min apart then
+    manual), ports `IZipFolderScanner`, `IProcessedOrderStore`.
+  - Infrastructure: `DatedFolderZipScanner` (reads only day folders in
+    range; accepts `yyyy\MM\dd` and `yyyy\M\d`, only October seen so far),
+    `JsonProcessedOrderStore` (`processed.json`, temp + rename, key = ZIP
+    name, unreadable list throws so nothing is resent).
+  - Desktop: left menu, shared styles in `App.xaml`, pages Monitor, Manual
+    upload, Destination, Copy rules, JSON rules; one Save settings and
+    status line. `MonitorRow`. Queue keeps 200 finished rows. Manual
+    uploads add to the finished list and are off while the monitor runs.
+    `HelpWindow` + `HelpDocumentBuilder` (Markdown subset to FlowDocument);
+    8 topics in `Help/*.md` as embedded resources; F1 opens the topic of
+    the current page.
+  - Version 1.1.0. README updated.
+  - Tests: monitor (order, restart, unreadable list, scan range, retry
+    timing, manual retry, stop, progress, scan failure), scanner, store,
+    end-to-end with real files (delivered, not resent after the JSON and
+    files are gone; broken ZIP; older than look back).
+  - Release build: 0 warnings, 0 errors. Tests 143/143, 478 ms.
+  - UI smoke run of the Release app via UI Automation: all 5 pages and 8
+    help topics opened without crash, screenshots checked. Found and
+    fixed: date field cut off (wider, padding 0); topic name showed record
+    text. First smoke run reported "Help opened: True" falsely: the
+    foreground window was a Windows Security fingerprint prompt, not the
+    help (defect in that check; second run looks the window up by title).
+    Cause of that prompt unknown, not touched.
+  - Not tested: F1 key itself (help opened through its button), monitor
+    Start in the GUI, real network share, Retry button.
+  - Open question for user: Manual upload does not check the finished
+    list, so it resends an order whose JSON has left, without overwrite.
+- **~time-spent so far**: ~1.5 hours
+
+---
+
+## T034: Capital Data and Logs Folders, Two-Digit Month
+- **Status**: Closed
+- **Description**: User wants the folders written as `Data` and `Logs`,
+  and the month always with two digits.
+- **Work Done**:
+  - 2026-11-04: Default templates now `{root}\{computer}\Data\...` and
+    `...\Logs\...`. `{MM}` already gave two digits at the destination.
+  - Finding: `settings.json` holds the old default text, so new defaults
+    alone change nothing. `JsonUploadSettingsStore` now replaces exactly
+    the old default on load; a changed template stays.
+  - `DatedFolderZipScanner`: month two digits only, `yyyy\M\...` no longer
+    read (replaces the T033 guess). Assumption: the user meant this
+    source side too, as the destination was already correct. A day below
+    10 is still read with or without leading zero: no such folder seen.
+  - Tests changed and added (migration, changed template stays, one-digit
+    month ignored). README, help and `target_json_schema.md` updated.
+  - Release build: 0 warnings, 0 errors. First test run 144/146: two
+    assertions in `ProcessUploadOrderTests` still expected lowercase (test
+    only, missed by the replace). Fixed; tests 146/146.
+  - Not tested: real run writing the new folders in the GUI, real share.
+  - Risks told to user: Windows keeps the case of an existing `data` or
+    `logs` folder; DAISI documentation examples use lowercase.
+  - Committed with T032/T033 work on user's word; no push, no tag.
+- **time-spent**: ~0.3 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 31 (15 closed, 16 open)
-- **Total Time**: ~7.8 hours
+- **Total Tasks**: 34 (17 closed, 17 open)
+- **Total Time**: ~9.75 hours

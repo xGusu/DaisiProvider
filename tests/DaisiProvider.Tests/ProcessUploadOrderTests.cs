@@ -35,8 +35,8 @@ public sealed class ProcessUploadOrderTests
 
         Assert.Equal(UploadStage.Complete, result.Stage);
         Assert.Equal([@"prepare Local C:\out", "copy raw/a.bmp", "copy raw/b.bmp", "json"], events);
-        Assert.EndsWith(@"logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
-        Assert.EndsWith(@"data\2026\10\21\K1_20261022013000", copier.LastDirectory);
+        Assert.EndsWith(@"Logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
+        Assert.EndsWith(@"Data\2026\10\21\K1_20261022013000", copier.LastDirectory);
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class ProcessUploadOrderTests
 
         Assert.Equal(UploadStage.Complete, result.Stage);
         // Name from the ZIP; date folder from the capture time (UTC in this test).
-        Assert.EndsWith(@"logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
+        Assert.EndsWith(@"Logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
         Assert.Equal("K1", (string?)reportStore.Written!["Barcode"]);
         Assert.Equal("2026-10-21T23:59:58", (string?)reportStore.Written!["TimeStampUTC"]);
     }
@@ -166,10 +166,10 @@ public sealed class ProcessUploadOrderTests
         await CreateProcessor().ExecuteAsync(request, CancellationToken.None);
 
         Assert.Equal(@"prepare Network \\srv\share", events[0]);
-        Assert.Equal(@"\\srv\share\PC1\data\2026\10\21\K1_20261022013000", copier.LastDirectory);
-        Assert.Equal(@"\\srv\share\PC1\logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
+        Assert.Equal(@"\\srv\share\PC1\Data\2026\10\21\K1_20261022013000", copier.LastDirectory);
+        Assert.Equal(@"\\srv\share\PC1\Logs\2026\10\21\K1_20261022013000.json", reportStore.WrittenFile);
         Assert.Equal(
-            "//srv/share/PC1/data/2026/10/21/K1_20261022013000/a.bmp",
+            "//srv/share/PC1/Data/2026/10/21/K1_20261022013000/a.bmp",
             (string?)reportStore.Written!["Data"]![0]!["ImagePath"]);
     }
 
