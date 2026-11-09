@@ -26,7 +26,7 @@ public sealed class MonitorRow(string zipPath, DateOnly day) : INotifyPropertyCh
 
     public bool CanRetry => Stage is UploadStage.Failed or UploadStage.RetryScheduled;
 
-    public bool IsFinished => Stage is UploadStage.Complete or UploadStage.AlreadyDelivered;
+    public bool IsFinished => Stage is UploadStage.Complete or UploadStage.AlreadyDelivered or UploadStage.NothingToCopy;
 
     public void Update(MonitorQueueItem item)
     {
@@ -60,6 +60,7 @@ public sealed class MonitorRow(string zipPath, DateOnly day) : INotifyPropertyCh
             UploadStage.RetryScheduled => "Retry scheduled",
             UploadStage.Complete => "Complete",
             UploadStage.AlreadyDelivered => "Already delivered",
+            UploadStage.NothingToCopy => "Nothing to copy",
             UploadStage.Failed => "Failed / manual retry",
             _ => stage.ToString()!
         };

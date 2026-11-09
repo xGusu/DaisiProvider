@@ -30,7 +30,7 @@ public sealed class JsonUploadSettingsStoreTests : IDisposable
         var settings = new UploadAppSettings(
             new UploadDestinationSettings(@"D:\Data\uploadtest", "PC01", "Daisi"),
             [
-                new CopyRule(true, "raw", ["bmp", "png"]),
+                new CopyRule(true, "raw", ["bmp", "png"], ["101", "124"]),
                 new CopyRule(false, "result", ["txt"])
             ]);
 
@@ -41,6 +41,8 @@ public sealed class JsonUploadSettingsStoreTests : IDisposable
         Assert.Equal(settings.Destination, loaded.Destination);
         Assert.Equal(2, loaded.CopyRules.Count);
         Assert.Equal(settings.CopyRules[0].FileTypes, loaded.CopyRules[0].FileTypes);
+        Assert.Equal(["101", "124"], loaded.CopyRules[0].Positions!);
+        Assert.Empty(loaded.CopyRules[1].Positions ?? []);
         Assert.Equal("result", loaded.CopyRules[1].ZipFolder);
         Assert.False(loaded.CopyRules[1].Enabled);
         Assert.False(File.Exists(store.SettingsPath + ".tmp"));
@@ -96,6 +98,21 @@ public sealed class JsonUploadSettingsStoreTests : IDisposable
         Assert.Contains("dpapi:", fileText);
         Assert.Contains("\"Network\"", fileText);
         Assert.Equal(settings.Destination, loaded!.Destination);
+    }
+
+    [Fact]
+    public async Task Load_OldRuleWithoutPositions_CopiesAllPositions()
+    {
+        var path = Path.Combine(directory, "settings.json");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(
+            path,
+            """{ "Destination": { "RootPath": "D:\\x", "ComputerName": "PC", "ProjectName": "P" }, "CopyRules": [ { "Enabled": true, "ZipFolder": "raw", "FileTypes": [ "bmp" ] } ] }""");
+
+        var loaded = await new JsonUploadSettingsStore(path).LoadAsync(CancellationToken.None);
+
+        Assert.Empty(loaded!.CopyRules[0].Positions ?? []);
+        Assert.True(new CopySelection(loaded.CopyRules).Matches("raw/125#1#x.bmp"));
     }
 
     [Fact]

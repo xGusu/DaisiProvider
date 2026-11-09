@@ -46,7 +46,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T004: Planning Folder Monitoring Application
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Define project goals and requirements for an application
   that maps folders, monitors for generated ZIP files, copies pictures to
   local or network destinations, and generates JSON reports.
@@ -160,12 +160,14 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     fields omitted.
   - Still open: field-by-field mapping needs the target schema screenshot
     (T009).
-- **~time-spent so far**: ~0.45 hours
+  - 2026-11-09 closed (T036): plan built as 1.0/1.1. Download and
+    History pages moved to T040, Windows service to T039.
+- **time-spent**: ~0.45 hours
 
 ---
 
 ## T005: Building Upload Application Core
-- **Status**: In Progress
+- **Status**: Closed
 - **Description**: Build a testable Upload path in clean-architecture layers.
 - **Work Done**:
   - Added solution with separate Domain and Application projects.
@@ -189,7 +191,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     progress, `dotnet build DaisiProvider.sln` succeeded in 1.51 seconds with
     zero warnings and zero errors. GUI runtime and user test remain pending.
   - User will test through GUI; command-line Worker is an internal test seam.
-- **~time-spent so far**: ~1.1 hours
+  - 2026-11-09 closed (T036): core shipped in 1.0.0; GUI used since
+    (T033 smoke run, 50 archives delivered, see T010).
+- **time-spent**: ~1.1 hours
 
 ---
 
@@ -246,7 +250,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T010: Upload Ignores BMP Pictures
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Real archives store pictures as `raw/*.bmp`, but
   `ZipUploadPackageReader` only accepts `raw/*.png`.
 - **Work Done**:
@@ -258,7 +262,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - 2026-11-02: Fixed in code by configurable copy rules (T012); default
     rule covers `raw/*.bmp`. Build green. Stays open until tests run and
     a real archive copies through the GUI.
-- **~time-spent so far**: ~0.05 hours
+  - 2026-11-09 closed (T036): `D:\Data\DaisiUpload` holds 1275
+    BMPs and 50 log JSONs from the 50 archives; tests 146/146 (T034).
+- **time-spent**: ~0.05 hours
 
 ---
 
@@ -276,7 +282,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T012: Planning Configurable ZIP Copy Selection and Service UI
-- **Status**: Open
+- **Status**: Closed
 - **Description**: User wants to focus on image copy first: configurable
   selection of what to copy from inside the ZIP (folder/files), and the
   service must have a UI.
@@ -313,12 +319,14 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     0 errors, 7.96 s. Tests not run yet (need user go-ahead).
   - Progress model still uses picture names (`PictureCount`,
     `CopiedPictureCount`); left as is to keep the change small.
-- **~time-spent so far**: ~0.5 hours
+  - 2026-11-09 closed (T036): copy rules shipped in 1.0.0 and tested
+    since. Windows service moved to T039.
+- **time-spent**: ~0.5 hours
 
 ---
 
 ## T013: Planning Simpler Copy Rules and Tabbed UI
-- **Status**: Open
+- **Status**: Closed
 - **Description**: User wants simple rules (user defines ZIP folder and
   file types to copy) and a tabbed UI: copy rules on their own tab, room
   for additional JSON rules on another tab.
@@ -341,7 +349,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
       JSON preview warning moved to JSON rules tab.
     - Tests updated to file types; new cases for `*`, prefixes, null.
   - Not built or tested yet (needs user go-ahead).
-- **~time-spent so far**: ~0.3 hours
+  - 2026-11-09 closed (T036): built and tested in later runs (T015
+    onward), shipped in 1.0.0. Tabs later became the left menu (T033).
+- **time-spent**: ~0.3 hours
 
 ---
 
@@ -370,7 +380,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T015: Planning Order JSON Report Creation
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Work out how to build the output order JSON report:
   which data it needs and where each value comes from.
 - **Work Done**:
@@ -459,7 +469,10 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - Test run 2: 53/53 passed, 180 ms.
   - Finding T017: computed `TestTime` not unique in real data.
   - Not yet run against real archives or in the GUI.
-- **~time-spent so far**: ~0.8 hours
+  - 2026-11-09 closed (T036): log JSON shipped in 1.0.0; real
+    archives delivered (T010). Destinations: T023 (one), T014
+    (several). TestTime gap stays open in T017.
+- **time-spent**: ~0.8 hours
 
 ---
 
@@ -543,7 +556,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T020: Planning Model Folder as Prediction Source
-- **Status**: Open
+- **Status**: Closed
 - **Description**: User proposes a settable models root (e.g.
   `D:\Ai\Models\BMW_XNF_AssemblyBoard`) with one folder per model; read
   `meta.json` there to fill more DAISI log fields.
@@ -580,7 +593,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - Build: Application, Infrastructure, Worker, tests built. Desktop
     output could not be replaced: files locked by running app ".NET Host
     (41420)" (MSB3026 retries). User must close app and rebuild (F5).
-- **~time-spent so far**: ~0.6 hours
+  - 2026-11-09 closed (T036): later Release builds 0 errors (T030,
+    T033). GUI check moved to T037.
+- **time-spent**: ~0.6 hours
 
 ---
 
@@ -637,7 +652,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T023: Planning Local or Network Destination
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Destination can be a local PC path or a network share;
   app connects to the share itself (user/password). JSON `ImagePath` must
   show the share path, e.g. `//srvlme04/presqual-ingoing/data/...`.
@@ -681,12 +696,13 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
   - Build: succeeded, 0 warnings, 0 errors, 4.33 s. Tests: 91/91 passed,
     345 ms.
   - Not tested against a real share or in the GUI (needs user).
-- **~time-spent so far**: ~0.5 hours
+  - 2026-11-09 closed (T036): real share and GUI test moved to T037.
+- **time-spent**: ~0.5 hours
 
 ---
 
 ## T024: Computer Folder on Share, Debugger Stop, Destination Check
-- **Status**: Open
+- **Status**: Closed
 - **Description**: User wants the computer folder between share and
   `data`/`logs`; reports a "crash" when the share connection fails; wants
   destination folder validation.
@@ -720,12 +736,14 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     prepare event (test defect, assertions made exact). Run 2: 94/94,
     175 ms. Build 0 warnings, 0 errors.
   - Open: user retest in GUI with real share (debugger stop gone?).
-- **~time-spent so far**: ~0.4 hours
+  - 2026-11-09 closed (T036): retest with real share (debugger stop)
+    moved to T037.
+- **time-spent**: ~0.4 hours
 
 ---
 
 ## T025: Configurable Destination Path Template
-- **Status**: In Progress
+- **Status**: Closed
 - **Description**: User: project folder must not be in the path, only the
   computer. For the future, a path builder where the layout is chosen.
 - **Work Done**:
@@ -754,12 +772,14 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     (MSB3027): files locked by running app ".NET Host (31348)" and the
     debug adapter. No compile error reported. Tests 107/107, 271 ms.
   - Open: user closes app, F5, checks layout in GUI.
-- **~time-spent so far**: ~0.4 hours
+  - 2026-11-09 closed (T036): T033 smoke run opened the Destination
+    page without crash. Layout check in a real run moved to T037.
+- **time-spent**: ~0.4 hours
 
 ---
 
 ## T026: Tokens in DAISI Project
-- **Status**: Open
+- **Status**: Closed
 - **Description**: User wants tokens for position and computer name in
   the DAISI project setting (JSON rules tab).
 - **Work Done**:
@@ -776,7 +796,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     113/113 passed, 344 ms. Desktop compiled to a temp folder: 0 warnings,
     0 errors (normal output locked by the running app, MSB3027).
   - Open: user check in GUI.
-- **~time-spent so far**: ~0.25 hours
+  - 2026-11-09 closed (T036): GUI check moved to T037.
+- **time-spent**: ~0.25 hours
 
 ---
 
@@ -914,7 +935,7 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 ---
 
 ## T033: Building Compact UI, Folder Monitor and F1 Help
-- **Status**: Open
+- **Status**: Closed
 - **Description**: Implement the plan from T032. Version 1.1.0.
 - **Work Done**:
   - 2026-11-04 Application: `UploadMonitorSettings` (from-date, look back
@@ -949,7 +970,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     Start in the GUI, real network share, Retry button.
   - Open question for user: Manual upload does not check the finished
     list, so it resends an order whose JSON has left, without overwrite.
-- **~time-spent so far**: ~1.5 hours
+  - 2026-11-09 closed (T036): untested items moved to T037; manual
+    resend question is T038.
+- **time-spent**: ~1.5 hours
 
 ---
 
@@ -980,6 +1003,174 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T035: Reading Session Starter Files (2026-11-05)
+- **Status**: Closed
+- **Description**: Session start: read entry point, baseline, task list,
+  and README; check Git identity.
+- **Work Done**:
+  - Read `.claude.md`, `SESSION_BASELINE.md`, `TASKLIST.md`, `README.md`.
+  - Git identity matches baseline (repo-local gmail identity, see T003).
+  - `master` is 1 commit ahead of `origin` (`52fd555`, not pushed). Version
+    1.1.0 has no tag yet; only `v1.0.0` exists.
+- **time-spent**: ~0.05 hours
+
+---
+
+## T036: Cleaning Up Docs and Tasks
+- **Status**: Closed
+- **Description**: User chose docs and task cleanup as the first
+  improvement: fill baseline placeholders, close finished tasks, collect
+  what is still open.
+- **Work Done**:
+  - 2026-11-09: Evidence for T010: `D:\Data\DaisiUpload` holds 1275 BMPs
+    and 50 log JSONs, i.e. all 50 archives delivered through the app.
+    `D:\Data\uploadtest` is empty.
+  - Proposal sent to user (close list, new tasks, placeholders, README
+    lessons learned, `.claude.md` template text).
+  - User chose only: close finished tasks and open T037-T040.
+    Placeholders, README lessons learned and `.claude.md` not done; T001
+    stays open for the placeholders.
+  - Closed T004, T005, T010, T012, T013, T015, T020, T023, T024, T025,
+    T026, T033, each with a closing line pointing to its follow-up.
+- **time-spent**: ~0.2 hours
+
+---
+
+## T037: GUI and Real Share Acceptance Test
+- **Status**: Open
+- **Description**: Checks that were left to the user in the GUI or need a
+  real network share. Collected from closed tasks (T036).
+- **Work Done**:
+  - To test:
+    - F1 key opens the help of the current page (T033 used the button).
+    - Monitor Start, Stop, resume with the app, Retry button (T033).
+    - Real network share: login, test file, `ImagePath` with share path
+      (T023); no debugger stop on a failed login (T024).
+    - Path layout templates in a real run (T025); DAISI project tokens
+      and AI models root in the written JSON (T020, T026).
+    - `Data` / `Logs` folder names written by the GUI (T034).
+    - Copied names with `_` instead of `#`, `ImagePath` matching (T041).
+    - Positions column in copy rules; "Nothing to copy" row (T042).
+- **~time-spent so far**: ~0 hours
+
+---
+
+## T038: Manual Upload Resends Finished Orders
+- **Status**: Open
+- **Description**: Manual upload does not check the finished list
+  (`processed.json`), so it delivers an order again once the server has
+  moved its JSON away, without the overwrite box. Found in T033.
+- **Work Done**:
+  - Needs user decision: check the finished list on manual upload, or
+    keep manual upload as a deliberate resend.
+- **~time-spent so far**: ~0 hours
+
+---
+
+## T039: Windows Service
+- **Status**: Open
+- **Description**: Final shape from T012: a Windows service does the
+  monitoring without a logged-in user; the WPF app edits the shared
+  settings and shows live status (named pipe). Today the monitor runs only
+  while the window is open.
+- **Work Done**:
+  - Not planned yet. Settings already live in ProgramData and the password
+    uses DPAPI LocalMachine so a service can read them (T014, T023).
+- **~time-spent so far**: ~0 hours
+
+---
+
+## T040: Model Download and History Pages
+- **Status**: Open
+- **Description**: Leftovers from the T004 plan: Download page (poll a
+  network source for newer models, stage, activate after the current
+  order, archive the old model with retention) and History page.
+- **Work Done**:
+  - Not planned yet. Needs version comparison rule and metrics (T004).
+- **~time-spent so far**: ~0 hours
+
+---
+
+## T041: Replace # With _ in Copied File Names
+- **Status**: Closed
+- **Description**: User wants `#` in picture names replaced by `_` at the
+  destination. Future pictures will have no `#`; replacing on copy keeps
+  old archives working.
+- **Work Done**:
+  - 2026-11-09: Impact: copier target name, `ImagePath` in the log JSON
+    (must show the new name), position / capture time / report matching
+    (must keep the source name, they split on `#`), duplicate-name check
+    (`a#1` and `a_1` collide after rename).
+  - Plan sent: rule in Application, target name passed to the copier,
+    log builder parses source name and writes target name, duplicate check
+    on target names, tests, help and README.
+  - User approved (2026-11-09): replace in all copied files, not only
+    pictures.
+  - Noted for later: names without `#` lose position and capture time
+    parsing; needs the new name format.
+  - Implemented: `UploadFileName.Target` (leaf, `#` -> `_`);
+    `IUploadPictureCopier` takes `destinationFileName`, filled by
+    `ProcessUploadOrder`; `DaisiLogBuilder` writes the target name in
+    `ImagePath`, parsing and report match keep the ZIP name;
+    `ZipUploadPackageReader` checks duplicates on target names and lists
+    the colliding entries.
+  - Tests: `UploadFileNameTests`; log builder (ImagePath `_`, position,
+    capture time, model, run data still from `#` name); processing (copier
+    gets `_` name, ImagePath); reader (`101#1` + `101_1` collide);
+    end-to-end (only the `_` file in the order folder). Two old asserts
+    searched `124#` in `ImagePath`, changed to `/124_`.
+  - Docs: README, help `copy-rules`, `process`, `log-json`, schema doc
+    (open question 2 answered for `#`).
+  - Release build from scratch (`--no-incremental`): 0 warnings,
+    0 errors, 4 s. Tests 153/153 (146 old + 7 new), 515 ms. The new
+    end-to-end assert (only the `_` file in the order folder) fails on
+    the old code, which wrote the `#` name.
+  - Real run in the GUI moved to T037.
+- **time-spent**: ~0.4 hours
+
+---
+
+## T042: Position Filter in Copy Rules, Release
+- **Status**: Closed
+- **Description**: User wants copy rules to take a list of position names;
+  only files of those positions are copied. Then commit, release and tag.
+- **Work Done**:
+  - 2026-11-09: Position = number before the first `#` in the ZIP name
+    (`DaisiLogBuilder.PicturePosition`); `result/<picture>_result.txt`
+    starts with it too, so a filter works for both folders. `CopyRule`
+    is a record loaded by System.Text.Json; a new optional field reads as
+    empty from old settings files.
+  - Plan and questions sent (filter per rule or global, ZIP with no
+    selected position, version number).
+  - User decided (2026-11-09): positions per rule; a ZIP without any
+    selected position finishes as "Nothing to copy" (no copy, no JSON, on
+    the finished list, no retry); release 1.2.0 (includes T041).
+  - Implemented: `CopyRule.Positions` (optional, null = all);
+    `CopySelection` checks the position (`PicturePosition` of the leaf),
+    new `MatchesFolderAndType`, `ParsePositions`; reader fails only when
+    no file fits folder and type, returns an empty package when only the
+    positions exclude everything; stage `UploadStage.NothingToCopy`
+    (appended last) returned by `ProcessUploadOrder` before destination
+    access. Desktop: Positions column, "Nothing to copy" state and
+    messages, folder run summary count. Worker exit code 0 for it.
+    Monitor needed no change (records any returned stage as finished).
+  - Version 1.2.0. README (copy rules, release history), help
+    `copy-rules`, `process`, `monitor`.
+  - Tests: selection (positions, result files, no position, other
+    position, prefix `1011` vs `101`, empty = all, parse), reader (filter,
+    empty package), processing (nothing to copy touches no destination:
+    a failing destination would throw), settings (round trip, old rule
+    without positions).
+  - Release build from scratch: succeeded, no warnings, 4.3 s. Tests
+    160/160, 599 ms.
+  - Not tested in the GUI (added to T037).
+  - User asked for commit, release and tag: T035-T042 committed together
+    as release 1.2.0 (gmail identity), annotated tag `v1.2.0`. Not pushed
+    (no push instruction). `v1.1.0` was never tagged (`52fd555`).
+- **time-spent**: ~0.5 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 34 (17 closed, 17 open)
-- **Total Time**: ~9.75 hours
+- **Total Tasks**: 42 (33 closed, 9 open)
+- **Total Time**: ~10.9 hours

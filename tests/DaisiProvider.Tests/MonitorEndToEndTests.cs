@@ -11,6 +11,8 @@ public sealed class MonitorEndToEndTests : IDisposable
 {
     private const string PictureName = "101#1381#2026-11-04_11h52m51s099ms.bmp";
 
+    private const string TargetName = "101_1381_2026-11-04_11h52m51s099ms.bmp";
+
     private static readonly DateOnly Today = new(2026, 11, 4);
 
     private readonly string directory = Path.Combine(Path.GetTempPath(), "DaisiProviderTests", Guid.NewGuid().ToString("N"));
@@ -41,13 +43,15 @@ public sealed class MonitorEndToEndTests : IDisposable
 
         await RunOneScanAsync();
 
-        var picture = Path.Combine(destination, "PC1", "Data", "2026", "11", "04", "K1_20261104120000", PictureName);
+        var orderFolder = Path.Combine(destination, "PC1", "Data", "2026", "11", "04", "K1_20261104120000");
+        var picture = Path.Combine(orderFolder, TargetName);
         var log = Path.Combine(destination, "PC1", "Logs", "2026", "11", "04", "K1_20261104120000.json");
-        Assert.True(File.Exists(picture));
+        Assert.Equal([picture], Directory.GetFiles(orderFolder));
         Assert.True(File.Exists(log));
         var json = JsonNode.Parse(await File.ReadAllTextAsync(log))!;
         Assert.Equal("K1", (string?)json["Barcode"]);
-        Assert.EndsWith($"/PC1/Data/2026/11/04/K1_20261104120000/{PictureName}", (string?)json["Data"]![0]!["ImagePath"]);
+        Assert.EndsWith($"/PC1/Data/2026/11/04/K1_20261104120000/{TargetName}", (string?)json["Data"]![0]!["ImagePath"]);
+        Assert.Equal("PROJECT/PC1/101", (string?)json["Data"]![0]!["Project"]);
 
         // The server takes the order away; a restarted app must not deliver it again.
         Directory.Delete(Path.Combine(destination, "PC1"), recursive: true);

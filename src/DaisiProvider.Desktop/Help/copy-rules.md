@@ -9,6 +9,7 @@ Each rule has:
 | Enabled | Disabled rules are skipped |
 | ZIP folder | Folder inside the ZIP. Empty means the ZIP root. |
 | File types | Plain extensions such as `bmp, png`. `*` copies every file in the folder. |
+| Positions | Picture positions to copy, such as `101, 124`. Empty copies all positions. |
 
 Defaults: `raw` with `bmp, png, jpg` (enabled) and `result` with `txt` (disabled).
 
@@ -17,8 +18,10 @@ Defaults: `raw` with `bmp, png, jpg` (enabled) and `result` with `txt` (disabled
 - Only files directly in the folder match, not files in deeper subfolders.
 - Upper and lower case do not matter.
 - `bmp`, `.bmp` and `*.bmp` mean the same.
+- The position is the number before the first `#` in the file name, e.g. `124` in `124#1294#2026-...bmp`. Result files such as `124#1294#..._result.txt` carry it too. When a rule lists positions, a file of another position, or a file without a position, is not copied by that rule.
+- If the ZIP has files for the rules but none of the listed positions, the order is finished as **Nothing to copy**: no files, no log JSON, no retry. It goes on the finished list like a delivered order.
 
-All selected files land in one order folder under their original names. If two selected files have the same name, the ZIP fails validation. The same happens when no rule is enabled or no file matches.
+All selected files land in one order folder under their original names, except that every `#` becomes `_` (older pictures carry `#`, which is risky in web addresses). If two selected files end up with the same name, for example `101#1.bmp` and `101_1.bmp`, the ZIP fails validation. The same happens when no rule is enabled or no file matches.
 
 ## Effect on the log JSON
 

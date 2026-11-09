@@ -159,6 +159,34 @@ public sealed class ProcessUploadOrderTests
     }
 
     [Fact]
+    public async Task NoFileToCopy_FinishesWithoutDestinationCopyOrJson()
+    {
+        reader.Files = [];
+        destinationAccess.Fail = true;
+
+        var result = await CreateProcessor().ExecuteAsync(Request(), CancellationToken.None);
+
+        Assert.Equal(UploadStage.NothingToCopy, result.Stage);
+        Assert.Equal("K1", result.Order!.OrderId);
+        Assert.Empty(events);
+        Assert.Null(reportStore.Written);
+    }
+
+    [Fact]
+    public async Task HashInName_IsCopiedWithUnderscore_AndJsonPointsToIt()
+    {
+        reader.Files = ["raw/101#1#t.bmp"];
+
+        await CreateProcessor().ExecuteAsync(Request(), CancellationToken.None);
+
+        Assert.Contains("copy raw/101#1#t.bmp", events);
+        Assert.Equal("101_1_t.bmp", copier.LastFileName);
+        Assert.Equal(
+            "C:/out/PC1/Data/2026/10/21/K1_20261022013000/101_1_t.bmp",
+            (string?)reportStore.Written!["Data"]![0]!["ImagePath"]);
+    }
+
+    [Fact]
     public async Task NetworkDestination_PreparesFirstAndWritesBelowComputerFolder()
     {
         var request = Request() with { Destination = NetworkDestination() };
@@ -296,10 +324,13 @@ public sealed class ProcessUploadOrderTests
 
         public string? LastDirectory { get; private set; }
 
+        public string? LastFileName { get; private set; }
+
         public Task CopyPictureAsync(
             string sourceZipPath,
             string pictureName,
             string destinationDirectory,
+            string destinationFileName,
             CancellationToken cancellationToken)
         {
             if (pictureName == FailOn)
@@ -308,6 +339,7 @@ public sealed class ProcessUploadOrderTests
             }
 
             LastDirectory = destinationDirectory;
+            LastFileName = destinationFileName;
             events.Add($"copy {pictureName}");
             return Task.CompletedTask;
         }

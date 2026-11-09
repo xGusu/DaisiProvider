@@ -1,7 +1,7 @@
 <Project>
   <!-- One version for every project. Raise it here for each release and tag the commit vX.Y.Z. -->
   <PropertyGroup>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>DaisiProvider</Product>
   </PropertyGroup>
 </Project>

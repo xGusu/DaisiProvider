@@ -10,14 +10,17 @@ public sealed class CopyRuleRow
 
     public string FileTypes { get; set; } = string.Empty;
 
+    public string Positions { get; set; } = string.Empty;
+
     public static CopyRuleRow FromRule(CopyRule rule) =>
         new()
         {
             Enabled = rule.Enabled,
             ZipFolder = rule.ZipFolder,
-            FileTypes = CopySelection.FormatFileTypes(rule.FileTypes)
+            FileTypes = CopySelection.FormatFileTypes(rule.FileTypes),
+            Positions = CopySelection.FormatFileTypes(rule.Positions)
         };
 
     public CopyRule ToRule() =>
-        new(Enabled, ZipFolder.Trim(), CopySelection.ParseFileTypes(FileTypes));
+        new(Enabled, ZipFolder.Trim(), CopySelection.ParseFileTypes(FileTypes), CopySelection.ParsePositions(Positions));
 }

@@ -130,6 +130,42 @@ public sealed class ZipUploadPackageReaderTests : IDisposable
     }
 
     [Fact]
+    public async Task Positions_SelectOnlyThoseFiles()
+    {
+        var zipPath = CreateZip("order_report.json", "raw/101#1#x.bmp", "raw/124#2#x.bmp", "raw/image1.bmp");
+        var selection = new CopySelection([new CopyRule(true, "raw", ["bmp"], ["124"])]);
+
+        var package = await new ZipUploadPackageReader(selection)
+            .ReadAndValidateAsync(zipPath, CancellationToken.None);
+
+        Assert.Equal(["raw/124#2#x.bmp"], package.FileNames);
+    }
+
+    [Fact]
+    public async Task NoFileOfTheSelectedPositions_GivesEmptyPackage()
+    {
+        var zipPath = CreateZip("order_report.json", "raw/101#1#x.bmp");
+        var selection = new CopySelection([new CopyRule(true, "raw", ["bmp"], ["124"])]);
+
+        var package = await new ZipUploadPackageReader(selection)
+            .ReadAndValidateAsync(zipPath, CancellationToken.None);
+
+        Assert.Empty(package.FileNames);
+    }
+
+    [Fact]
+    public async Task NamesThatCollideAfterHashReplace_Throw()
+    {
+        var zipPath = CreateZip("order_report.json", "raw/101#1.bmp", "raw/101_1.bmp");
+
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new ZipUploadPackageReader(new CopySelection(CopySelection.DefaultRules))
+                .ReadAndValidateAsync(zipPath, CancellationToken.None));
+        Assert.Contains("raw/101#1.bmp", exception.Message);
+        Assert.Contains("raw/101_1.bmp", exception.Message);
+    }
+
+    [Fact]
     public async Task NoMatchingFiles_Throws()
     {
         var zipPath = CreateZip("order_report.json", "raw/image1.tif");

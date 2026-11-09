@@ -191,7 +191,7 @@ public sealed class DaisiLogBuilder(TimeZoneInfo localTimeZone)
 
         var entry = new JsonObject
         {
-            ["ImagePath"] = $"{imageBasePath}/{fileName}",
+            ["ImagePath"] = $"{imageBasePath}/{UploadFileName.Target(fileName)}",
             ["TestTime"] = FormatTime(testTimeUtc.UtcDateTime)
         };
 

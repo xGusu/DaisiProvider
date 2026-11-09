@@ -34,7 +34,7 @@ Its name and folder come from the log template on the Destination page.
   "OrderInfo": { "Steering": "LL", "StructuralGroup": "BJ1JA01C09" },
   "Data": [
     {
-      "ImagePath": "//server/share/N026995/Data/2026/10/29/K695531412G7101_20261029045749/101#1381#2026-10-29_03h52m51s099ms.bmp",
+      "ImagePath": "//server/share/N026995/Data/2026/10/29/K695531412G7101_20261029045749/101_1381_2026-10-29_03h52m51s099ms.bmp",
       "TestTime": "2026-10-29T02:52:51",
       "ModelID": "20260716_202858_1",
       "Project": "PROJECT/N026995/101",
@@ -82,7 +82,7 @@ Times use `yyyy-MM-ddTHH:mm:ss`, whole seconds, without a zone. Values that are 
 | `PredictionType` | Always | See below |
 | `Prediction` | Real Anomaly run | `AnomalyFound`, `Threshold`, `Blobsize` |
 
-Picture names look like `<position>#<n>#<yyyy-MM-dd>_<HH>h<mm>m<ss>s<fff>ms.<ext>`. The position is the number before the first `#`. If a name has no capture time, `TestTime` falls back to the order start plus the analysis times of the earlier pictures, or to the order start.
+Picture names look like `<position>#<n>#<yyyy-MM-dd>_<HH>h<mm>m<ss>s<fff>ms.<ext>`. The position is the number before the first `#`. Position and capture time are read from the name in the ZIP; the copied file and `ImagePath` use the name with `#` replaced by `_`. If a name has no capture time, `TestTime` falls back to the order start plus the analysis times of the earlier pictures, or to the order start.
 
 ## PredictionType
 

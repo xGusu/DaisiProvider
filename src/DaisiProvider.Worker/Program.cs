@@ -57,7 +57,7 @@ try
     var result = await processor.ExecuteAsync(request, cancellation.Token);
     Console.WriteLine($"Status: {result.Stage}");
     Console.WriteLine($"Files copied: {result.CopiedPictureCount}/{result.PictureCount}");
-    return result.Stage is UploadStage.Complete or UploadStage.AlreadyDelivered ? 0 : 1;
+    return result.Stage is UploadStage.Complete or UploadStage.AlreadyDelivered or UploadStage.NothingToCopy ? 0 : 1;
 }
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 {

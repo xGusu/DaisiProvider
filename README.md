@@ -39,6 +39,8 @@ only), and Computer must be changed to the new PC's name.
   log JSON.
 - 1.1.0: folder monitor with retries and a persistent finished list,
   compact window with left menu, F1 help.
+- 1.2.0: `#` in copied file names becomes `_`; copy rules can be limited
+  to picture positions.
 
 ## Architecture
 
@@ -102,8 +104,23 @@ ZIP root) and the file types to copy from it, as plain extensions such as
 that folder are matched, not files in deeper subfolders. Matching ignores
 case. Disabled rules are skipped. Rules are not derived from ZIP contents.
 
+A rule can also list positions, such as `101, 124`; empty means all. The
+position is the number before the first `#` in the file name, so a station
+can deliver only the camera positions it is responsible for. A file of
+another position, or without a position, is then not copied by that rule.
+A ZIP whose files fit the rules but contain none of the listed positions
+is finished as "Nothing to copy": nothing is copied, no log JSON is
+written, and it is recorded as finished so the monitor does not retry it.
+A ZIP with no file for the rules at all still fails, because that points
+to a wrong rule or a broken ZIP.
+
 All selected files are copied into one order folder under their original
-names. If two selected files share a name, the ZIP fails validation.
+names, with every `#` replaced by `_`. Older pictures carry `#`, which is
+risky in web addresses; newer ones will not, so the replacement only keeps
+old archives working. Position, capture time and the match against
+`order_report.json` still read the name inside the ZIP. If two selected
+files end up with the same name (e.g. `101#1.bmp` and `101_1.bmp`), the
+ZIP fails validation.
 
 Without a settings file the defaults are: `raw` with `bmp, png, jpg`
 (enabled) and `result` with `txt` (disabled). The real production

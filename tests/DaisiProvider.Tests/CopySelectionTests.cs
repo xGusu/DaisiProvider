@@ -96,6 +96,49 @@ public sealed class CopySelectionTests
     }
 
     [Fact]
+    public void Positions_LimitFilesToThoseBeforeTheFirstHash()
+    {
+        var selection = new CopySelection(
+        [
+            new CopyRule(true, "raw", ["bmp"], ["101", "124"]),
+            new CopyRule(true, "result", ["txt"], ["124"])
+        ]);
+
+        Assert.True(selection.Matches("raw/101#1#2026-10-21_16h01m50s000ms.bmp"));
+        Assert.True(selection.Matches("raw/124#9#x.bmp"));
+        Assert.True(selection.Matches("result/124#9#x_result.txt"));
+        Assert.False(selection.Matches("result/101#1#x_result.txt"));
+        Assert.False(selection.Matches("raw/125#1#x.bmp"));
+        Assert.False(selection.Matches("raw/1011#1#x.bmp"));
+        // Without a position the file cannot be one of the listed positions.
+        Assert.False(selection.Matches("raw/image1.bmp"));
+        Assert.True(selection.MatchesFolderAndType("raw/125#1#x.bmp"));
+        Assert.True(selection.MatchesFolderAndType("raw/image1.bmp"));
+        Assert.False(selection.MatchesFolderAndType("raw/125#1#x.png"));
+    }
+
+    [Fact]
+    public void EmptyOrMissingPositions_MatchAllFiles()
+    {
+        var selection = new CopySelection(
+        [
+            new CopyRule(true, "raw", ["bmp"], [" ", ""]),
+            new CopyRule(true, "result", ["txt"])
+        ]);
+
+        Assert.True(selection.Matches("raw/125#1#x.bmp"));
+        Assert.True(selection.Matches("raw/image1.bmp"));
+        Assert.True(selection.Matches("result/image1_result.txt"));
+    }
+
+    [Fact]
+    public void ParsePositions_SplitsTrimsAndDeduplicates()
+    {
+        Assert.Equal(["101", "124"], CopySelection.ParsePositions(" 101, 124;101  "));
+        Assert.Empty(CopySelection.ParsePositions(""));
+    }
+
+    [Fact]
     public void ParseFileTypes_SplitsNormalizesAndDeduplicates()
     {
         Assert.Equal(

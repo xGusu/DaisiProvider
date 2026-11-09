@@ -64,6 +64,14 @@ public sealed class ProcessUploadOrder(
                 $"ZIP name order ID {order.OrderId} differs from order_report.json OrderId {package.Report.OrderId}.");
         }
 
+        // No file of the copy rules' positions: finished without delivery, no retry (user decision, T042).
+        if (package.FileNames.Count == 0)
+        {
+            progress = progress with { Stage = UploadStage.NothingToCopy, Order = order };
+            await SaveProgressAsync(progress, cancellationToken, progressObserver);
+            return progress;
+        }
+
         var sourceDate = DateOnly.FromDateTime(
             logBuilder.OrderStartUtc(order, package.Report, package.FileNames).UtcDateTime);
         var outputPaths = pathBuilder.Build(request.Destination, sourceDate, order);
@@ -124,6 +132,7 @@ public sealed class ProcessUploadOrder(
                 request.SourceZipPath,
                 package.FileNames[index],
                 outputPaths.PictureDirectory,
+                UploadFileName.Target(package.FileNames[index]),
                 cancellationToken);
 
             progress = progress with { CopiedPictureCount = index + 1 };

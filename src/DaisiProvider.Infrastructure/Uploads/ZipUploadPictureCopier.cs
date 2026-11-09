@@ -9,6 +9,7 @@ public sealed class ZipUploadPictureCopier : IUploadPictureCopier
         string sourceZipPath,
         string pictureName,
         string destinationDirectory,
+        string destinationFileName,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -17,7 +18,7 @@ public sealed class ZipUploadPictureCopier : IUploadPictureCopier
         using var archive = ZipFile.OpenRead(sourceZipPath);
         var entry = archive.GetEntry(pictureName)
             ?? throw new InvalidDataException($"Picture is missing from ZIP: {pictureName}");
-        var destinationPath = Path.Combine(destinationDirectory, Path.GetFileName(pictureName));
+        var destinationPath = Path.Combine(destinationDirectory, destinationFileName);
 
         await using var source = entry.Open();
         await using var destination = new FileStream(

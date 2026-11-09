@@ -141,8 +141,11 @@ Today `order_report.json` has none of the Anomaly/Classification values
   with `/`, following the path layout template (T025). Default for share
   and local root: `<root>/<computer>/Data/yyyy/MM/dd/<order>/<file>`,
   e.g. `//<server>/<share>/<computer>/Data/...` (no project folder).
-- Defaults applied until the open questions are answered: source file
-  names (with `#`, `.bmp`) are kept; an existing log JSON marks the order
+- Picture names: `#` is replaced by `_` on copy and in `ImagePath`
+  (user decision 2026-11-09, T041); position and capture time are still
+  read from the ZIP name. Newer pictures will have no `#`.
+- Defaults applied until the open questions are answered: `.bmp` names
+  are kept; an existing log JSON marks the order
   as delivered and it is skipped unless overwrite is chosen; skipped = AI
   test message starts with `AI test skipped`; position code dropped;
   conflict proposals 1-4 applied.
@@ -184,11 +187,9 @@ real per-picture start time.
 ## Open questions
 
 1. `ImagePath` form: answered by user 2026-11-03 (see Decisions, T023).
-2. Picture file names: free to choose per spec, and we keep the source
-   names. These contain `#` (e.g. `124#1294#2026-...ms.bmp`). In a web
-   URL `#` starts a fragment, so the labelling page or the bucket could
-   break on them. Keep, or rename on copy (e.g. replace `#` with `_`)?
-   Pictures are also `.bmp` while the spec examples use `.png`.
+2. Picture file names: `#` answered by user 2026-11-09 (replaced by `_`
+   on copy, see Decisions, T041). Still open: pictures are `.bmp` while
+   the spec examples use `.png`.
 3. Temporary JSON name `<name>.json.tmp`: does the server react only to
    `*.json`?
 4. Re-copy of an order whose JSON already exists (server may already

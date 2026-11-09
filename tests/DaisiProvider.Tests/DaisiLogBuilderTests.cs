@@ -163,13 +163,13 @@ public sealed class DaisiLogBuilderTests
         Assert.Equal("K1", (string?)log["Barcode"]);
         Assert.False(log.ContainsKey("OrderInfo"));
         Assert.Equal(3, data.Count);
-        var withModel = data.Single(entry => ((string)entry!["ImagePath"]!).Contains("124#"))!.AsObject();
+        var withModel = data.Single(entry => ((string)entry!["ImagePath"]!).Contains("/124_"))!.AsObject();
         Assert.Equal("Anomaly", (string?)withModel["PredictionType"]);
         Assert.Equal("20260716_202858_1", (string?)withModel["ModelID"]);
         Assert.False(withModel.ContainsKey("Prediction"));
         Assert.False(withModel.ContainsKey("ExecutionTime"));
         Assert.All(
-            data.Where(entry => !((string)entry!["ImagePath"]!).Contains("124#")),
+            data.Where(entry => !((string)entry!["ImagePath"]!).Contains("/124_")),
             entry => Assert.Equal("Classification", (string?)entry!["PredictionType"]));
     }
 
@@ -263,6 +263,33 @@ public sealed class DaisiLogBuilderTests
             Settings);
 
         Assert.Equal(expected, (string?)log["Data"]![0]!["ImagePath"]);
+    }
+
+    [Fact]
+    public void ImagePath_UsesTargetName_WhileParsingKeepsHashName()
+    {
+        const string fileName = "124#1294#2026-09-01_19h29m06s739ms.bmp";
+        var models = new Dictionary<string, ModelInfo>
+        {
+            ["124"] = new("20260716_202858_1", "Anomaly", 0.27, 13000)
+        };
+
+        var log = new DaisiLogBuilder(UtcPlusTwo).Build(
+            ZipOrder,
+            Report(Result(fileName, "anomaly score 0.4", 12, 1)),
+            [$"raw/{fileName}"],
+            Destination,
+            OutputPaths,
+            Settings with { Project = "P/{position}" },
+            models);
+        var entry = log["Data"]![0]!.AsObject();
+
+        Assert.EndsWith("/124_1294_2026-09-01_19h29m06s739ms.bmp", (string?)entry["ImagePath"]);
+        Assert.DoesNotContain("#", (string?)entry["ImagePath"]);
+        Assert.Equal("2026-09-01T17:29:06", (string?)entry["TestTime"]);
+        Assert.Equal("P/124", (string?)entry["Project"]);
+        Assert.Equal("20260716_202858_1", (string?)entry["ModelID"]);
+        Assert.Equal(12, (int?)entry["ExecutionTime"]);
     }
 
     [Fact]

@@ -693,6 +693,7 @@ public partial class MainWindow : System.Windows.Window
         var failures = new List<string>();
         var completedCount = 0;
         var alreadyDeliveredCount = 0;
+        var nothingToCopyCount = 0;
         try
         {
             for (var index = 0; index < zipPaths.Length; index++)
@@ -718,6 +719,10 @@ public partial class MainWindow : System.Windows.Window
                     {
                         alreadyDeliveredCount++;
                     }
+                    else if (result.Stage == UploadStage.NothingToCopy)
+                    {
+                        nothingToCopyCount++;
+                    }
                     else
                     {
                         completedCount++;
@@ -737,7 +742,7 @@ public partial class MainWindow : System.Windows.Window
 
             var summary =
                 $"Completed {completedCount}, already delivered (skipped) {alreadyDeliveredCount}, " +
-                $"failed {failures.Count} of {zipPaths.Length} ZIP archives.";
+                $"nothing to copy {nothingToCopyCount}, failed {failures.Count} of {zipPaths.Length} ZIP archives.";
             StatusTextBlock.Text = failures.Count == 0
                 ? summary
                 : $"{summary}{Environment.NewLine}{string.Join(Environment.NewLine, failures)}";
@@ -745,7 +750,7 @@ public partial class MainWindow : System.Windows.Window
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
             StatusTextBlock.Text =
-                $"Cancelled after {completedCount + alreadyDeliveredCount} of {zipPaths.Length} ZIP archives.";
+                $"Cancelled after {completedCount + alreadyDeliveredCount + nothingToCopyCount} of {zipPaths.Length} ZIP archives.";
         }
         finally
         {
@@ -827,6 +832,8 @@ public partial class MainWindow : System.Windows.Window
             UploadStage.Complete => "Files copied and log JSON written.",
             UploadStage.AlreadyDelivered =>
                 "Skipped: log JSON already exists at the destination. Tick overwrite to send again.",
+            UploadStage.NothingToCopy =>
+                "Nothing to copy: no file of the positions in the copy rules. No log JSON written.",
             _ => $"Upload finished: {result.Stage}."
         };
 
@@ -842,7 +849,7 @@ public partial class MainWindow : System.Windows.Window
             UploadStage.Validating => "Reading order_report.json and validating ZIP contents...",
             UploadStage.Copying => "Copying files...",
             UploadStage.WritingJson => "Writing log JSON...",
-            UploadStage.Complete or UploadStage.AlreadyDelivered => DescribeResult(progress),
+            UploadStage.Complete or UploadStage.AlreadyDelivered or UploadStage.NothingToCopy => DescribeResult(progress),
             _ => progress.Stage.ToString()
         };
     }

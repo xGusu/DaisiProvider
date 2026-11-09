@@ -9,5 +9,7 @@ public enum UploadStage
     RetryScheduled,
     Complete,
     AlreadyDelivered,
-    Failed
+    Failed,
+    // The copy rules' positions select no file of this ZIP; nothing is delivered (T042).
+    NothingToCopy
 }

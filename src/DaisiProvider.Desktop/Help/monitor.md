@@ -36,6 +36,7 @@ One row per ZIP, newest on top. Finished rows stay until 200 are reached.
 | Writing JSON | All files copied, log JSON being written |
 | Complete | Delivered |
 | Already delivered | The log JSON already existed, order skipped |
+| Nothing to copy | No file of the positions in the copy rules, nothing delivered |
 | Retry scheduled | Failed, next try at the time in Detail |
 | Failed / manual retry | All retries used. Select the row and press **Retry selected**. |
 

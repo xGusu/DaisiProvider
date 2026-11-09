@@ -349,6 +349,7 @@
                                                 Width="70" />
                         <DataGridTextColumn Header="ZIP folder" Binding="{Binding ZipFolder}" Width="200" />
                         <DataGridTextColumn Header="File types" Binding="{Binding FileTypes}" Width="*" />
+                        <DataGridTextColumn Header="Positions (empty = all)" Binding="{Binding Positions}" Width="*" />
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">

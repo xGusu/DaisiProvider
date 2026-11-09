@@ -34,6 +34,7 @@ public interface IUploadPictureCopier
         string sourceZipPath,
         string pictureName,
         string destinationDirectory,
+        string destinationFileName,
         CancellationToken cancellationToken);
 }
 

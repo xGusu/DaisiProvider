@@ -66,25 +66,27 @@ public sealed class ZipUploadPackageReader(CopySelection selection) : IUploadPac
             report = await OrderReportParser.ParseAsync(reportStream, cancellationToken);
         }
 
+        if (!archive.Entries.Any(entry => selection.MatchesFolderAndType(entry.FullName)))
+        {
+            throw new InvalidDataException("ZIP contains no files matching the enabled copy rules.");
+        }
+
+        // Empty when the rules' positions select none of the files: the order has nothing to copy.
         var files = archive.Entries
             .Where(entry => selection.Matches(entry.FullName))
             .Select(entry => entry.FullName)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        if (files.Length == 0)
-        {
-            throw new InvalidDataException("ZIP contains no files matching the enabled copy rules.");
-        }
 
-        // All selected files land in one order folder, so leaf names must be unique.
+        // All selected files land in one order folder under their target names, which must be unique
+        // ("a#1.bmp" and "a_1.bmp" collide after '#' -> '_').
         var duplicateNames = files
-            .Select(name => Path.GetFileName(name.Replace('\\', '/')))
-            .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(UploadFileName.Target, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicateNames is not null)
         {
             throw new InvalidDataException(
-                $"Selected ZIP files contain duplicate filename: {duplicateNames.Key}");
+                $"Selected ZIP files contain duplicate filename: {duplicateNames.Key} ({string.Join(", ", duplicateNames)})");
         }
 
         return new UploadPackage(report, files);
