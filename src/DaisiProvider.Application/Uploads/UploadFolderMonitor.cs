@@ -7,7 +7,8 @@ public delegate Task<UploadProgress> ProcessZip(
     IProgress<UploadProgress> progress,
     CancellationToken cancellationToken);
 
-// Stage null = waiting in the queue.
+// Stage null = waiting in the queue. FinishedEarlierUtc set = on the finished list before this run;
+// shown only, never processed (T053).
 public sealed record MonitorQueueItem(
     string ZipPath,
     DateOnly FolderDate,
@@ -16,9 +17,17 @@ public sealed record MonitorQueueItem(
     int TotalFiles,
     int RetryCount,
     DateTimeOffset? NextRetryUtc,
-    string? Error);
+    string? Error,
+    DateTimeOffset? FinishedEarlierUtc = null);
 
-public sealed record MonitorStatus(bool Running, DateTimeOffset? LastScanUtc, string? Problem);
+// What the last scan saw, so the user can tell why nothing is processed (T053).
+public sealed record MonitorScanSummary(DateOnly From, DateOnly To, int ZipCount, int FinishedEarlier, int New);
+
+public sealed record MonitorStatus(
+    bool Running,
+    DateTimeOffset? LastScanUtc,
+    string? Problem,
+    MonitorScanSummary? LastScan = null);
 
 // Scans the day folders and processes new ZIPs one at a time, oldest first. Finished ZIPs are kept
 // in IProcessedOrderStore, because the server may have moved a delivered order's JSON (T032).
@@ -35,8 +44,12 @@ public sealed class UploadFolderMonitor(
     private readonly object gate = new();
     private readonly Dictionary<string, MonitorQueueItem> items = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim wake = new(0);
-    private HashSet<string>? finished;
+    private Dictionary<string, FinishedOrder>? finished;
+
+    // ZIP paths already shown as a row, so a finished ZIP is reported once per run.
+    private readonly HashSet<string> shown = new(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset? lastScanUtc;
+    private MonitorScanSummary? lastScan;
 
     public event Action<MonitorQueueItem>? ItemChanged;
 
@@ -52,7 +65,12 @@ public sealed class UploadFolderMonitor(
 
         // Manual uploads may have added orders while the monitor was stopped.
         finished = null;
-        StatusChanged?.Invoke(new MonitorStatus(true, lastScanUtc, null));
+        lock (gate)
+        {
+            shown.Clear();
+        }
+
+        StatusChanged?.Invoke(new MonitorStatus(true, lastScanUtc, null, lastScan));
         try
         {
             var interval = TimeSpan.FromSeconds(settings.ScanIntervalSeconds);
@@ -65,7 +83,8 @@ public sealed class UploadFolderMonitor(
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     // Production must run unattended: a failed scan is reported and tried again.
-                    StatusChanged?.Invoke(new MonitorStatus(true, lastScanUtc, $"Scan failed: {exception.Message}"));
+                    StatusChanged?.Invoke(
+                        new MonitorStatus(true, lastScanUtc, $"Scan failed: {exception.Message}", lastScan));
                 }
 
                 await wake.WaitAsync(interval, cancellationToken);
@@ -80,7 +99,7 @@ public sealed class UploadFolderMonitor(
         }
         finally
         {
-            StatusChanged?.Invoke(new MonitorStatus(false, lastScanUtc, null));
+            StatusChanged?.Invoke(new MonitorStatus(false, lastScanUtc, null, lastScan));
         }
     }
 
@@ -92,22 +111,35 @@ public sealed class UploadFolderMonitor(
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(processZip);
 
-        finished ??= new HashSet<string>(
-            await processedStore.LoadAsync(cancellationToken),
-            StringComparer.OrdinalIgnoreCase);
+        if (finished is null)
+        {
+            finished = new Dictionary<string, FinishedOrder>(StringComparer.OrdinalIgnoreCase);
+            foreach (var order in await processedStore.LoadAsync(cancellationToken))
+            {
+                finished[order.ZipName] = order;
+            }
+        }
 
         var today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
-        var candidates = scanner.Scan(settings.WatchFolder!, settings.ScanFrom(today), today);
+        var from = settings.ScanFrom(today);
+        var candidates = scanner.Scan(settings.WatchFolder!, from, today);
+        var finishedEarlier = 0;
         foreach (var candidate in candidates)
         {
-            if (!finished.Contains(Path.GetFileName(candidate.ZipPath)))
+            if (finished.TryGetValue(Path.GetFileName(candidate.ZipPath), out var order))
+            {
+                finishedEarlier++;
+                ShowFinishedEarlier(candidate, order);
+            }
+            else
             {
                 AddIfNew(candidate);
             }
         }
 
         lastScanUtc = timeProvider.GetUtcNow();
-        StatusChanged?.Invoke(new MonitorStatus(true, lastScanUtc, null));
+        lastScan = new MonitorScanSummary(from, today, candidates.Count, finishedEarlier, candidates.Count - finishedEarlier);
+        StatusChanged?.Invoke(new MonitorStatus(true, lastScanUtc, null, lastScan));
 
         foreach (var zipPath in DueZipPaths())
         {
@@ -137,6 +169,21 @@ public sealed class UploadFolderMonitor(
         }
     }
 
+    // Shown once per run so the user sees the ZIP was found; it is not queued.
+    private void ShowFinishedEarlier(ZipCandidate candidate, FinishedOrder order)
+    {
+        lock (gate)
+        {
+            if (!shown.Add(candidate.ZipPath))
+            {
+                return;
+            }
+        }
+
+        ItemChanged?.Invoke(new MonitorQueueItem(
+            candidate.ZipPath, candidate.FolderDate, order.Result, 0, 0, 0, null, null, order.FinishedUtc));
+    }
+
     private void AddIfNew(ZipCandidate candidate)
     {
         MonitorQueueItem? added = null;
@@ -146,6 +193,7 @@ public sealed class UploadFolderMonitor(
             {
                 added = new MonitorQueueItem(candidate.ZipPath, candidate.FolderDate, null, 0, 0, 0, null, null);
                 items[candidate.ZipPath] = added;
+                shown.Add(candidate.ZipPath);
             }
         }
 
@@ -185,7 +233,7 @@ public sealed class UploadFolderMonitor(
             var result = await processZip(zipPath, progress, cancellationToken);
             var zipName = Path.GetFileName(zipPath);
             await processedStore.AddAsync(zipName, result.Stage, CancellationToken.None);
-            finished!.Add(zipName);
+            finished![zipName] = new FinishedOrder(zipName, timeProvider.GetUtcNow(), result.Stage);
             Update(zipPath, item => item with { Stage = result.Stage }, remove: true);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

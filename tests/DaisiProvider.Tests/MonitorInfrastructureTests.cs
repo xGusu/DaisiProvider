@@ -1,3 +1,4 @@
+using DaisiProvider.Application.Uploads;
 using DaisiProvider.Domain.Uploads;
 using DaisiProvider.Infrastructure.Uploads;
 
@@ -68,10 +69,28 @@ public sealed class MonitorInfrastructureTests : IDisposable
         await new JsonProcessedOrderStore(path).AddAsync("a.zip", UploadStage.Complete, CancellationToken.None);
         await new JsonProcessedOrderStore(path).AddAsync("b.zip", UploadStage.AlreadyDelivered, CancellationToken.None);
         await new JsonProcessedOrderStore(path).AddAsync("A.ZIP", UploadStage.Complete, CancellationToken.None);
-        var names = await new JsonProcessedOrderStore(path).LoadAsync(CancellationToken.None);
+        var orders = await new JsonProcessedOrderStore(path).LoadAsync(CancellationToken.None);
 
-        Assert.Equal(["b.zip", "A.ZIP"], names);
+        Assert.Equal(["b.zip", "A.ZIP"], orders.Select(order => order.ZipName));
+        Assert.Equal([UploadStage.AlreadyDelivered, UploadStage.Complete], orders.Select(order => order.Result));
+        Assert.All(orders, order => Assert.True(order.FinishedUtc > DateTimeOffset.UtcNow.AddMinutes(-5)));
         Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public async Task Store_ReadsFileWrittenByEarlierVersion()
+    {
+        // processed.json from 1.2.x must load unchanged (T053 made the entries public).
+        var path = AddFile("processed.json");
+        await File.WriteAllTextAsync(
+            path,
+            """[{"ZipName":"a.zip","FinishedUtc":"2026-11-04T10:54:55.3326719+01:00","Result":"Complete"}]""");
+
+        var order = Assert.Single(await new JsonProcessedOrderStore(path).LoadAsync(CancellationToken.None));
+
+        Assert.Equal(
+            new FinishedOrder("a.zip", new DateTimeOffset(2026, 11, 4, 10, 54, 55, TimeSpan.FromHours(1)).AddTicks(3326719), UploadStage.Complete),
+            order);
     }
 
     [Fact]

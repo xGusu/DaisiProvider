@@ -71,6 +71,9 @@ only), and Computer must be changed to the new PC's name.
   the later commit.
 - 1.2.2: icon on window and taskbar; packages signed with a self-signed
   certificate.
+- 1.2.3: monitor shows each scan's range and counts and lists ZIPs
+  finished earlier as grey rows; a new setup processes the whole look
+  back range.
 
 ### Branding and icon
 
@@ -214,7 +217,9 @@ the monitor scans `<folder>\yyyy\MM\dd\*.zip` at a settable interval
 ZIPs created while the app was closed. It reads only the day folders from
 the later of **Process ZIPs from** and today minus **Look back days**
 (default 30). Older folders are neither read nor shown, which also keeps
-the scan work small.
+the scan work small. A new setup starts with **Process ZIPs from** at
+today minus the look back days, so the first Start covers the whole look
+back range; a date saved earlier is kept.
 
 ZIPs run one at a time, oldest first, through the same steps as a manual
 upload. After a failure a ZIP is retried three times, five minutes apart,
@@ -226,6 +231,11 @@ finished ZIPs are stored by file name in
 `%ProgramData%\DaisiProvider\processed.json`, written with a temporary file
 and rename. If that list cannot be read the monitor processes nothing,
 since an empty list would resend every order in range.
+
+A monitor that skips everything looks idle, so each scan reports its date
+range and how many ZIPs it found, how many finished earlier and how many
+are new. ZIPs on the finished list are shown once per Start as greyed
+"Finished earlier" rows with their result and time.
 
 **Start** saves all settings and takes a snapshot of them; changes apply
 after Stop and Start. A running monitor starts again with the app. Stop

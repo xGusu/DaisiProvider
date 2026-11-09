@@ -54,7 +54,52 @@ public sealed class UploadFolderMonitorTests
         await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
 
         Assert.Empty(processed);
-        Assert.Empty(changes);
+        Assert.Empty(processedStore.Added);
+    }
+
+    [Fact]
+    public async Task ZipInStoredList_IsShownOnceAsFinishedEarlier()
+    {
+        // T053: a skipped ZIP must be visible, otherwise the monitor looks idle.
+        processedStore.Names.Add("a.zip");
+        scanner.Zips.Add(new ZipCandidate(@"D:\Archives\a.zip", Today));
+
+        await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
+        await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
+
+        var item = Assert.Single(changes);
+        Assert.Equal(@"D:\Archives\a.zip", item.ZipPath);
+        Assert.Equal(UploadStage.Complete, item.Stage);
+        Assert.Equal(FakeProcessedStore.FinishedAt, item.FinishedEarlierUtc);
+        Assert.Empty(processed);
+    }
+
+    [Fact]
+    public async Task ZipProcessedInThisRun_IsNotShownAsFinishedEarlier()
+    {
+        scanner.Zips.Add(new ZipCandidate(@"D:\Archives\a.zip", Today));
+
+        await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
+        await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
+
+        Assert.DoesNotContain(changes, item => item.FinishedEarlierUtc is not null);
+        Assert.Equal(UploadStage.Complete, changes[^1].Stage);
+    }
+
+    [Fact]
+    public async Task Scan_ReportsRangeAndCounts()
+    {
+        var statuses = new List<MonitorStatus>();
+        monitor.StatusChanged += statuses.Add;
+        processedStore.Names.Add("old.zip");
+        scanner.Zips.Add(new ZipCandidate(@"D:\Archives\old.zip", Today.AddDays(-2)));
+        scanner.Zips.Add(new ZipCandidate(@"D:\Archives\new.zip", Today));
+
+        await monitor.ScanOnceAsync(settings, Succeed, CancellationToken.None);
+
+        Assert.Equal(
+            new MonitorScanSummary(Today.AddDays(-10), Today, ZipCount: 2, FinishedEarlier: 1, New: 1),
+            statuses[^1].LastScan);
     }
 
     [Fact]
@@ -276,18 +321,25 @@ public sealed class UploadFolderMonitorTests
 
     private sealed class FakeProcessedStore : IProcessedOrderStore
     {
+        public static readonly DateTimeOffset FinishedAt = new(2026, 11, 1, 8, 0, 0, TimeSpan.Zero);
+
+        // Names on the list (loaded and added); Added = only those added by the monitor.
         public List<string> Names { get; } = [];
+
+        public List<string> Added { get; } = [];
 
         public bool FailLoad { get; set; }
 
-        public Task<IReadOnlyCollection<string>> LoadAsync(CancellationToken cancellationToken) =>
+        public Task<IReadOnlyCollection<FinishedOrder>> LoadAsync(CancellationToken cancellationToken) =>
             FailLoad
                 ? throw new InvalidDataException("broken list")
-                : Task.FromResult<IReadOnlyCollection<string>>(Names.ToArray());
+                : Task.FromResult<IReadOnlyCollection<FinishedOrder>>(
+                    Names.Select(name => new FinishedOrder(name, FinishedAt, UploadStage.Complete)).ToArray());
 
         public Task AddAsync(string zipName, UploadStage result, CancellationToken cancellationToken)
         {
             Names.Add(zipName);
+            Added.Add(zipName);
             return Task.CompletedTask;
         }
     }

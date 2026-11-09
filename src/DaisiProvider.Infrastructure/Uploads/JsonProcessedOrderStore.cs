@@ -21,12 +21,12 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
         "DaisiProvider",
         "processed.json");
 
-    public async Task<IReadOnlyCollection<string>> LoadAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<FinishedOrder>> LoadAsync(CancellationToken cancellationToken)
     {
         await fileLock.WaitAsync(cancellationToken);
         try
         {
-            return (await ReadAsync(cancellationToken)).Select(order => order.ZipName).ToArray();
+            return await ReadAsync(cancellationToken);
         }
         finally
         {
@@ -42,7 +42,7 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
         {
             var orders = await ReadAsync(cancellationToken);
             orders.RemoveAll(order => string.Equals(order.ZipName, zipName, StringComparison.OrdinalIgnoreCase));
-            orders.Add(new ProcessedOrder(zipName, DateTimeOffset.UtcNow, result));
+            orders.Add(new FinishedOrder(zipName, DateTimeOffset.UtcNow, result));
             await WriteAsync(orders, cancellationToken);
         }
         finally
@@ -51,7 +51,7 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
         }
     }
 
-    private async Task<List<ProcessedOrder>> ReadAsync(CancellationToken cancellationToken)
+    private async Task<List<FinishedOrder>> ReadAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(filePath))
         {
@@ -61,7 +61,7 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
         try
         {
             await using var stream = File.OpenRead(filePath);
-            return await JsonSerializer.DeserializeAsync<List<ProcessedOrder>>(
+            return await JsonSerializer.DeserializeAsync<List<FinishedOrder>>(
                 stream,
                 SerializerOptions,
                 cancellationToken)
@@ -75,7 +75,7 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
         }
     }
 
-    private async Task WriteAsync(List<ProcessedOrder> orders, CancellationToken cancellationToken)
+    private async Task WriteAsync(List<FinishedOrder> orders, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
@@ -94,6 +94,4 @@ public sealed class JsonProcessedOrderStore(string filePath) : IProcessedOrderSt
 
         File.Move(temporaryPath, filePath, overwrite: true);
     }
-
-    private sealed record ProcessedOrder(string ZipName, DateTimeOffset FinishedUtc, UploadStage Result);
 }

@@ -62,8 +62,8 @@ public partial class MainWindow : System.Windows.Window
         monitor.ItemChanged += item => Dispatcher.BeginInvoke(() => ApplyQueueItem(item));
         monitor.StatusChanged += status => Dispatcher.BeginInvoke(() => ApplyMonitorStatus(status));
         MonitorGrid.ItemsSource = monitorRows;
-        ProcessFromDatePicker.SelectedDate = DateTime.Today;
         LookBackDaysTextBox.Text = UploadMonitorSettings.DefaultLookBackDays.ToString();
+        ProcessFromDatePicker.SelectedDate = DefaultProcessFromDate();
         ScanIntervalTextBox.Text = UploadMonitorSettings.DefaultScanIntervalSeconds.ToString();
         Closing += (_, _) => monitorCancellation?.Cancel();
 
@@ -349,11 +349,13 @@ public partial class MainWindow : System.Windows.Window
             monitorRowsByZip.Remove(oldRow.ZipPath);
         }
 
+        var earlier = finishedRows.Count(entry => entry.IsFinishedEarlier);
         var failed = monitorRows.Count(entry => entry.Stage == UploadStage.Failed);
         var retrying = monitorRows.Count(entry => entry.Stage == UploadStage.RetryScheduled);
         var waiting = monitorRows.Count - finishedRows.Length - failed - retrying;
         MonitorSummaryTextBlock.Text =
-            $"{finishedRows.Length} done, {waiting} in progress or waiting, {retrying} retrying, {failed} failed";
+            $"{finishedRows.Length - earlier} done, {earlier} finished earlier, {waiting} in progress or waiting, " +
+            $"{retrying} retrying, {failed} failed";
     }
 
     private void ApplyMonitorStatus(MonitorStatus status)
@@ -363,12 +365,28 @@ public partial class MainWindow : System.Windows.Window
             ? (Brush)FindResource("AccentBrush")
             : (Brush)FindResource("TextBrush");
         MonitorLastScanTextBlock.Text = status.LastScanUtc is DateTimeOffset lastScan
-            ? $"Last scan {lastScan.ToLocalTime():HH:mm:ss}"
+            ? $"Last scan {lastScan.ToLocalTime():HH:mm:ss}" + ScanSummaryText(status.LastScan)
             : string.Empty;
         if (status.Problem is not null)
         {
             GlobalStatusTextBlock.Text = status.Problem;
         }
+    }
+
+    // e.g. "Last scan 10:55:01: 2026-11-04 to 2026-11-09, 3 ZIPs, 3 finished earlier, 0 new"
+    private static string ScanSummaryText(MonitorScanSummary? scan) =>
+        scan is null
+            ? string.Empty
+            : $": {scan.From:yyyy-MM-dd} to {scan.To:yyyy-MM-dd}, {scan.ZipCount} ZIPs, " +
+              $"{scan.FinishedEarlier} finished earlier, {scan.New} new";
+
+    // A new setup starts with the whole look back range (user decision, T053).
+    private DateTime DefaultProcessFromDate()
+    {
+        var lookBack = int.TryParse(LookBackDaysTextBox.Text.Trim(), out var days) && days >= 0
+            ? days
+            : UploadMonitorSettings.DefaultLookBackDays;
+        return DateTime.Today.AddDays(-lookBack);
     }
 
     private void InsertProjectToken_Click(object sender, RoutedEventArgs eventArgs)
@@ -488,9 +506,9 @@ public partial class MainWindow : System.Windows.Window
             if (settings.Monitor is { } monitorSettings)
             {
                 WatchFolderTextBox.Text = monitorSettings.WatchFolder ?? string.Empty;
-                ProcessFromDatePicker.SelectedDate =
-                    monitorSettings.ProcessFromDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
                 LookBackDaysTextBox.Text = monitorSettings.LookBackDays.ToString();
+                ProcessFromDatePicker.SelectedDate =
+                    monitorSettings.ProcessFromDate?.ToDateTime(TimeOnly.MinValue) ?? DefaultProcessFromDate();
                 ScanIntervalTextBox.Text = monitorSettings.ScanIntervalSeconds.ToString();
                 resumeMonitor = monitorSettings.Running;
             }
@@ -539,7 +557,7 @@ public partial class MainWindow : System.Windows.Window
             EmptyToNull(WatchFolderTextBox.Text),
             ProcessFromDatePicker.SelectedDate is DateTime date
                 ? DateOnly.FromDateTime(date)
-                : DateOnly.FromDateTime(DateTime.Today),
+                : DateOnly.FromDateTime(DefaultProcessFromDate()),
             ReadNumber(LookBackDaysTextBox, invalidNumber ?? UploadMonitorSettings.DefaultLookBackDays),
             ReadNumber(ScanIntervalTextBox, invalidNumber ?? UploadMonitorSettings.DefaultScanIntervalSeconds),
             running);

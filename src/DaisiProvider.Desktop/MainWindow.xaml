@@ -137,6 +137,15 @@
                 <DataGrid x:Name="MonitorGrid"
                           Grid.Row="2"
                           IsReadOnly="True">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFinishedEarlier}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Day" Binding="{Binding Day}" Width="85" />
                         <DataGridTextColumn Header="Order" Binding="{Binding Order}" Width="170" />

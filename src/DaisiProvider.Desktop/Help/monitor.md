@@ -7,7 +7,7 @@ The monitor watches the local archive folder and delivers each new ZIP by itself
 | Setting | Meaning |
 | --- | --- |
 | Monitored folder | Local root of the archive |
-| Process ZIPs from | ZIPs in day folders before this date are never touched. Default: the day of the first setup. |
+| Process ZIPs from | ZIPs in day folders before this date are never touched. Default: today minus look back days, so a new setup reads the whole look back range. A date saved earlier stays until you change it. |
 | Look back days | Day folders older than this are not read and not shown. Default 30. |
 | Scan every (s) | Seconds between scans. Default 60, minimum 5. |
 
@@ -27,6 +27,8 @@ The monitor runs only while this app is open. While it runs, Manual upload is sw
 
 One row per ZIP, newest on top. Finished rows stay until 200 are reached.
 
+Below the Start button each scan reports what it saw, e.g. `Last scan 10:55:01: 2026-11-04 to 2026-11-09, 3 ZIPs, 3 finished earlier, 0 new`. If the monitor seems idle, this line tells why: no ZIP in the range, or all of them finished earlier.
+
 | State | Meaning |
 | --- | --- |
 | Waiting | Found, not started yet |
@@ -39,6 +41,7 @@ One row per ZIP, newest on top. Finished rows stay until 200 are reached.
 | Nothing to copy | No file of the positions in the copy rules, nothing delivered |
 | Retry scheduled | Failed, next try at the time in Detail |
 | Failed / manual retry | All retries used. Select the row and press **Retry selected**. |
+| Finished earlier (grey) | On the finished list before this Start. Detail shows result and time. Not sent again. |
 
 ## Retries
 

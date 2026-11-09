@@ -52,10 +52,13 @@ public interface IZipFolderScanner
     IReadOnlyList<ZipCandidate> Scan(string rootFolder, DateOnly from, DateOnly to);
 }
 
+// One entry of the finished list: when the ZIP finished and with which result.
+public sealed record FinishedOrder(string ZipName, DateTimeOffset FinishedUtc, UploadStage Result);
+
 public interface IProcessedOrderStore
 {
-    // Names of finished ZIPs. An unreadable list throws: treating it as empty would send orders twice.
-    Task<IReadOnlyCollection<string>> LoadAsync(CancellationToken cancellationToken);
+    // Finished ZIPs. An unreadable list throws: treating it as empty would send orders twice.
+    Task<IReadOnlyCollection<FinishedOrder>> LoadAsync(CancellationToken cancellationToken);
 
     Task AddAsync(string zipName, UploadStage result, CancellationToken cancellationToken);
 }

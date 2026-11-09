@@ -26,14 +26,27 @@ public sealed class MonitorRow(string zipPath, DateOnly day) : INotifyPropertyCh
 
     public bool CanRetry => Stage is UploadStage.Failed or UploadStage.RetryScheduled;
 
+    // On the finished list before this run: shown greyed, never processed (T053).
+    public bool IsFinishedEarlier { get; private set; }
+
     public bool IsFinished => Stage is UploadStage.Complete or UploadStage.AlreadyDelivered or UploadStage.NothingToCopy;
 
     public void Update(MonitorQueueItem item)
     {
         Stage = item.Stage;
+        IsFinishedEarlier = item.FinishedEarlierUtc is not null;
         Files = item.TotalFiles > 0 ? $"{item.CopiedFiles}/{item.TotalFiles}" : string.Empty;
-        State = StateText(item.Stage);
-        Detail = DetailText(item);
+        if (item.FinishedEarlierUtc is DateTimeOffset finishedAt)
+        {
+            State = "Finished earlier";
+            Detail = $"{StateText(item.Stage)} on {finishedAt.ToLocalTime():yyyy-MM-dd HH:mm}; not sent again";
+        }
+        else
+        {
+            State = StateText(item.Stage);
+            Detail = DetailText(item);
+        }
+
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }
 

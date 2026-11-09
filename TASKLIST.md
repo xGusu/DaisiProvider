@@ -1055,6 +1055,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
       logo in the left menu; icon on exe, window and taskbar (T047).
     - Signed packages: exe starts; VS Code publish tasks sign; on another
       PC the signature shows trusted after installing the `.cer` (T050).
+    - Monitor scan line, grey "Finished earlier" rows, default from-date
+      for a new setup (T053).
 - **~time-spent so far**: ~0 hours
 
 ---
@@ -1401,6 +1403,87 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T052: Where the Settings File Lives
+- **Status**: Closed
+- **Description**: User asked where saved settings are stored.
+- **Work Done**:
+  - 2026-11-09: Answered from README / T012 / T033:
+    `C:\ProgramData\DaisiProvider\settings.json`, finished list
+    `processed.json` in the same folder.
+- **time-spent**: ~0.01 hours
+
+---
+
+## T053: Monitor Starts but Nothing Happens
+- **Status**: Open
+- **Description**: User started the app and the monitor and expected
+  uploads of the last 30 days plus visible tracking; nothing happened.
+- **Work Done**:
+  - 2026-11-09 evidence (read only):
+    - `settings.json` Monitor: watch `D:\Data\Archives`, Process ZIPs
+      from 2026-11-04, look back 30, scan 60 s.
+    - Scan range = later of from-date and today - 30 = 2026-11-04 to
+      today (T032 design), so October folders are not read.
+    - Archive: 2026\10\21 (2), \10\28 (2), \10\29 (46), \11\04 (3).
+      The 3 ZIPs of 11\04 have the same names as 10\29 ZIPs.
+    - `processed.json`: 49 entries, all Complete (last write 09:49).
+      All 3 ZIPs in range are on it, so the monitor skips them.
+    - Only `order_K977046012G7101_raw+result_20261029_063821.zip` (10\29)
+      is not on the list.
+  - Cause: monitor works as designed; nothing in range is new. Finding:
+    finished ZIPs are skipped silently (`UploadFolderMonitor.
+    ScanOnceAsync`, not shown as rows); only "Last scan" changes, so the
+    user cannot see why nothing happens.
+  - Options and questions sent to user.
+  - User decided (2026-11-09): new default "Process ZIPs from" = today
+    minus look back days (both fields stay); show a scan summary and
+    finished ZIPs as greyed rows with date; no resend button.
+  - Implemented:
+    - Application: `FinishedOrder` record (moved from the store, now
+      public); `IProcessedOrderStore.LoadAsync` returns it (file format
+      unchanged). `UploadFolderMonitor` keeps finished orders by name,
+      shows each finished ZIP once per run (`MonitorQueueItem.
+      FinishedEarlierUtc`, not queued), and reports
+      `MonitorScanSummary` (from, to, ZIPs, finished earlier, new) in
+      `MonitorStatus.LastScan`. A ZIP done in this run is not shown
+      again as finished earlier.
+    - Desktop: `MonitorRow.IsFinishedEarlier`, state "Finished earlier",
+      detail "<result> on <local time>; not sent again", grey row; scan
+      line under Start; bottom summary counts finished earlier apart.
+      Default from-date today minus look back in constructor, load
+      fallback and read fallback.
+    - Help `monitor`, README "Folder monitor".
+    - Tests: changed restart test (nothing added to list); new: shown once
+      as finished earlier, not shown when processed in this run, scan
+      summary, store reads a 1.2.x `processed.json`.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 164/164,
+    522 ms.
+  - The saved from-date 2026-11-04 is not changed by the new default;
+    user sets it by hand (e.g. 2026-10-10) to include October.
+  - Not tested in the GUI (T037).
+- **~time-spent so far**: ~0.6 hours
+
+---
+
+## T054: Release 1.2.3
+- **Status**: Closed
+- **Description**: User asked for 1.2.3, release commit and push (T053
+  monitor tracking; T052 note).
+- **Work Done**:
+  - 2026-11-09: Version 1.2.3 in `Directory.Build.props`; README release
+    history.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 164/164,
+    460 ms.
+  - Committed (gmail identity), annotated tag `v1.2.3`, pushed `master`
+    and the tag to origin (this note included).
+  - Signed packages built right after from that commit:
+    `publish\DaisiProvider-1.2.3-runtime\` and `-selfcontained\` (not in
+    git; result reported in the session).
+  - T053 stays open until the user checks the monitor in the GUI.
+- **time-spent**: ~0.1 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 51 (42 closed, 9 open)
+- **Total Tasks**: 54 (44 closed, 10 open)
 - **Total Time**: ~12.1 hours
