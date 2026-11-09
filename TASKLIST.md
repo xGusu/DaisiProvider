@@ -1176,7 +1176,10 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 - **Description**: 1.1.0 was committed (`52fd555`) but never tagged.
 - **Work Done**:
   - 2026-11-09: User asked to tag it. Annotated tag `v1.1.0` on
-    `52fd555`. Not pushed.
+    `52fd555`.
+  - User said "push" (2026-11-09): pushed `master` (178be63..b631756)
+    and tags `v1.1.0`, `v1.2.0` to origin. This note was committed and
+    pushed right after, on the user's word.
 - **time-spent**: ~0.02 hours
 
 ---
