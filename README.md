@@ -43,7 +43,9 @@ only), and Computer must be changed to the new PC's name.
   to picture positions.
 - 1.2.1: Save button turns orange while settings are unsaved; company
   logo in the left menu; own app icon; author and company in the exe
-  details.
+  details. The 1.2.1 packages were rebuilt after the tag with a fix that
+  shows the icon on the window and taskbar too; their file version names
+  the later commit.
 
 ### Branding and icon
 

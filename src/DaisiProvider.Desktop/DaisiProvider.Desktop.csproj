@@ -11,6 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Help\*.md" LogicalName="Help.%(Filename).md" />
+    <!-- Window and taskbar icon; ApplicationIcon alone is not used when started through dotnet.exe (F5). -->
+    <Resource Include="..\..\assets\icon\daisiprovider.ico" Link="daisiprovider.ico" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DaisiProvider.Application\DaisiProvider.Application.csproj" />

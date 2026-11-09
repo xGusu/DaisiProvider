@@ -1272,7 +1272,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     - Icon: `assets/icon/make-icon.ps1` (System.Drawing, Windows
       PowerShell 5.1) draws each size 16-256 from one 256 grid, writes
       `assets/icon/daisiprovider.ico` (PNG entries, 12 KB). Desktop
-      `ApplicationIcon` points to it; the windows take the exe icon.
+      `ApplicationIcon` points to it (exe file only; window icon see
+      T049).
     - Help `overview` and README ("Branding and icon") updated.
   - Release build from scratch: 0 warnings, 0 errors, 6 s. Tests
     160/160, 472 ms. Exe details read back: `DRÄXLMAIER Group`,
@@ -1304,6 +1305,39 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T049: App Icon Not Shown on Window and Taskbar
+- **Status**: Closed
+- **Description**: User: after 1.2.1 the window and taskbar still show
+  the .NET icon when the app starts.
+- **Work Done**:
+  - 2026-11-09 evidence: VS Code F5 starts
+    `bin\Debug\...\DaisiProvider.Desktop.dll` (launch.json), so the
+    process is `dotnet.exe`. `ApplicationIcon` (T047) is put only into
+    `DaisiProvider.Desktop.exe`; no window sets `Icon`, so Windows uses
+    the host process icon. T047 assumed the windows take the exe icon;
+    not true when started through `dotnet.exe`.
+  - Fix proposal sent: icon as WPF resource, `Icon` set on MainWindow and
+    HelpWindow.
+  - User approved fix, build and tests. Implemented: Desktop csproj
+    `Resource` linking `assets\icon\daisiprovider.ico` as
+    `daisiprovider.ico`; `Icon="/daisiprovider.ico"` on both windows.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 160/160,
+    423 ms (no test covers window icons).
+  - Check: icon file bytes found inside the new
+    `bin\Release\net10.0-windows\DaisiProvider.Desktop.dll`. First check
+    read the older `win-x64` publish build (10:44) and wrongly showed no
+    icon; that DLL predates the fix.
+  - User confirmed (2026-11-09): icon now shown on window and taskbar.
+  - User decided: version stays 1.2.1; commit all, no push, no new tag;
+    rebuild the 1.2.1 publish folders over the old ones. So the packages
+    hold this commit, newer than tag `v1.2.1` (`44cd588`); the exe file
+    version shows the new commit hash. README release history notes it.
+  - Committed (gmail identity) with this note; packages built right
+    after from that commit.
+- **time-spent**: ~0.2 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 48 (39 closed, 9 open)
-- **Total Time**: ~11.5 hours
+- **Total Tasks**: 49 (40 closed, 9 open)
+- **Total Time**: ~11.6 hours
