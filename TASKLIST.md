@@ -1171,6 +1171,16 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T043: Tag Release 1.1.0
+- **Status**: Closed
+- **Description**: 1.1.0 was committed (`52fd555`) but never tagged.
+- **Work Done**:
+  - 2026-11-09: User asked to tag it. Annotated tag `v1.1.0` on
+    `52fd555`. Not pushed.
+- **time-spent**: ~0.02 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 42 (33 closed, 9 open)
+- **Total Tasks**: 43 (34 closed, 9 open)
 - **Total Time**: ~10.9 hours
