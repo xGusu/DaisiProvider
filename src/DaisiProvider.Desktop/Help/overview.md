@@ -14,7 +14,10 @@ The log JSON travels with the images. It feeds the Power BI dashboard and makes 
 | Copy rules | Which files are taken out of the ZIP |
 | JSON rules | Values for the log JSON that are not in the ZIP |
 
-**Save settings** at the bottom right saves all pages at once.
+**Save settings** at the bottom right saves all pages at once. While any
+page differs from the saved settings the button turns orange and reads
+**Save settings \***. Changing a value back to the saved one clears it. A
+copy rule cell counts once you leave it.
 
 ## First setup
 

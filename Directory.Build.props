@@ -1,7 +1,10 @@
 <Project>
   <!-- One version for every project. Raise it here for each release and tag the commit vX.Y.Z. -->
   <PropertyGroup>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Product>DaisiProvider</Product>
+    <Authors>Gustav Vanderdi</Authors>
+    <Company>DRÄXLMAIER Group</Company>
+    <Copyright>© 2026 Gustav Vanderdi</Copyright>
   </PropertyGroup>
 </Project>

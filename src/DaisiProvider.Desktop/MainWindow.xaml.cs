@@ -4,10 +4,13 @@ using DaisiProvider.Infrastructure.Uploads;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace DaisiProvider.Desktop;
 
@@ -43,6 +46,11 @@ public partial class MainWindow : System.Windows.Window
     private HelpWindow? helpWindow;
     private TextBox? lastTemplateBox;
 
+    // Page values as they were last loaded or saved; null = nothing saved yet.
+    private string? savedSnapshot;
+    private bool settingsLoaded;
+    private bool unsavedCheckQueued;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -65,6 +73,8 @@ public partial class MainWindow : System.Windows.Window
         Loaded += async (_, _) =>
         {
             await LoadSettingsAsync();
+            settingsLoaded = true;
+            UpdateUnsavedMarker();
             if (resumeMonitor)
             {
                 await StartMonitorAsync();
@@ -97,7 +107,61 @@ public partial class MainWindow : System.Windows.Window
 
         UpdatePathPreview();
         UpdateProjectPreview();
+        WatchForUnsavedChanges();
     }
+
+    // Any edit on any page queues one comparison with the saved values.
+    private void WatchForUnsavedChanges()
+    {
+        AddHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler((_, _) => QueueUnsavedCheck()));
+        AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler((_, _) => QueueUnsavedCheck()));
+        AddHandler(ToggleButton.UncheckedEvent, new RoutedEventHandler((_, _) => QueueUnsavedCheck()));
+        AddHandler(PasswordBox.PasswordChangedEvent, new RoutedEventHandler((_, _) => QueueUnsavedCheck()));
+        AddHandler(Selector.SelectionChangedEvent, new SelectionChangedEventHandler((_, _) => QueueUnsavedCheck()));
+        ProcessFromDatePicker.SelectedDateChanged += (_, _) => QueueUnsavedCheck();
+        copyRules.CollectionChanged += (_, _) => QueueUnsavedCheck();
+        // A grid cell pushes its value to the row only when the edit ends.
+        CopyRulesGrid.CellEditEnding += (_, _) => QueueUnsavedCheck();
+    }
+
+    private void QueueUnsavedCheck()
+    {
+        if (unsavedCheckQueued)
+        {
+            return;
+        }
+
+        // Background priority runs after bindings and grid commits have updated the values.
+        unsavedCheckQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(UpdateUnsavedMarker));
+    }
+
+    private void UpdateUnsavedMarker()
+    {
+        unsavedCheckQueued = false;
+        if (!settingsLoaded)
+        {
+            return;
+        }
+
+        var unsaved = CurrentSettingsSnapshot() != savedSnapshot;
+        SaveSettingsButton.Content = unsaved ? "Save settings *" : "Save settings";
+        SaveSettingsButton.Style = (Style)FindResource(unsaved ? "UnsavedButton" : "PrimaryButton");
+        SaveSettingsButton.ToolTip = unsaved
+            ? "Unsaved changes. Save everything on all pages"
+            : "Save everything on all pages";
+    }
+
+    // Reads the rows without committing a grid edit, so typing in a cell is not interrupted.
+    // An unreadable number stays visible as a change (-1) instead of matching the default.
+    private string CurrentSettingsSnapshot() =>
+        JsonSerializer.Serialize(new
+        {
+            Destination = CurrentDestination(),
+            CopyRules = copyRules.Select(row => row.ToRule()).ToArray(),
+            Log = CurrentLogSettings(),
+            Monitor = CurrentMonitorSettings(invalidNumber: -1, running: false)
+        });
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
     {
@@ -431,6 +495,7 @@ public partial class MainWindow : System.Windows.Window
                 resumeMonitor = monitorSettings.Running;
             }
 
+            savedSnapshot = CurrentSettingsSnapshot();
             GlobalStatusTextBlock.Text = $"Settings loaded from {settingsStore.SettingsPath}";
         }
         catch (Exception exception) when (
@@ -454,14 +519,18 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
-    private Task SaveSettingsAsync(bool running) =>
-        settingsStore.SaveAsync(
+    private async Task SaveSettingsAsync(bool running)
+    {
+        await settingsStore.SaveAsync(
             new UploadAppSettings(
                 CurrentDestination(),
                 CurrentCopyRules(),
                 CurrentLogSettings(),
                 CurrentMonitorSettings(invalidNumber: null, running)),
             CancellationToken.None);
+        savedSnapshot = CurrentSettingsSnapshot();
+        UpdateUnsavedMarker();
+    }
 
     // invalidNumber replaces an unreadable number; null falls back to the default values.
     private UploadMonitorSettings CurrentMonitorSettings(int? invalidNumber, bool running)

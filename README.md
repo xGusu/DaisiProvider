@@ -41,6 +41,20 @@ only), and Computer must be changed to the new PC's name.
   compact window with left menu, F1 help.
 - 1.2.0: `#` in copied file names becomes `_`; copy rules can be limited
   to picture positions.
+- 1.2.1: Save button turns orange while settings are unsaved; company
+  logo in the left menu; own app icon; author and company in the exe
+  details.
+
+### Branding and icon
+
+The company logo is kept as received in
+`assets/branding/draexlmaier-logo-white.svg`. WPF cannot show SVG, so its
+paths are copied into `App.xaml` as the `CompanyLogo` drawing, shown at
+the top of the left menu; a new logo means copying the paths again. The
+app icon `assets/icon/daisiprovider.ico` (a ZIP with an arrow into a
+folder) is drawn by `assets/icon/make-icon.ps1`; change the script and run
+it with Windows PowerShell to redraw it. Company and copyright in the exe
+file details come from `Directory.Build.props`.
 
 ## Architecture
 

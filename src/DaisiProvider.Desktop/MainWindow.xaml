@@ -23,12 +23,18 @@
 
         <!-- Left menu -->
         <DockPanel Grid.Column="0" Background="{StaticResource NavBrush}">
+            <Image DockPanel.Dock="Top"
+                   Source="{StaticResource CompanyLogo}"
+                   Width="96"
+                   HorizontalAlignment="Left"
+                   Margin="14,16,14,4"
+                   ToolTip="DRÄXLMAIER Group" />
             <TextBlock DockPanel.Dock="Top"
                        Text="DaisiProvider"
                        Foreground="White"
                        FontSize="15"
                        FontWeight="SemiBold"
-                       Margin="14,14,14,12" />
+                       Margin="14,8,14,12" />
             <TextBlock x:Name="VersionTextBlock"
                        DockPanel.Dock="Bottom"
                        Foreground="{StaticResource NavTextBrush}"
@@ -454,7 +460,8 @@
 
             <!-- Bottom bar -->
             <DockPanel Grid.Row="1" Margin="0,8,0,0">
-                <Button DockPanel.Dock="Right"
+                <Button x:Name="SaveSettingsButton"
+                        DockPanel.Dock="Right"
                         Content="Save settings"
                         Style="{StaticResource PrimaryButton}"
                         ToolTip="Save everything on all pages"

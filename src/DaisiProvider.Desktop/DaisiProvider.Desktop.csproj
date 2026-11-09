@@ -6,6 +6,8 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Drawn by assets/icon/make-icon.ps1: ZIP with an arrow into a folder. -->
+    <ApplicationIcon>..\..\assets\icon\daisiprovider.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Help\*.md" LogicalName="Help.%(Filename).md" />

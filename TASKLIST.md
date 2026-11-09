@@ -1051,6 +1051,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     - `Data` / `Logs` folder names written by the GUI (T034).
     - Copied names with `_` instead of `#`, `ImagePath` matching (T041).
     - Positions column in copy rules; "Nothing to copy" row (T042).
+    - Save button orange with `*` on change, normal after save or undo;
+      logo in the left menu; icon on exe, window and taskbar (T047).
 - **~time-spent so far**: ~0 hours
 
 ---
@@ -1231,6 +1233,77 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T047: Unsaved Marker, Branding, Exe Info and App Icon
+- **Status**: Closed
+- **Description**: User wants: Save button changes color while settings
+  are unsaved; company logo (user added `assets/branding/
+  draexlmaier-logo-white.svg`) shown in the app; user's name in the exe
+  file info; an own app icon showing what the app does instead of the
+  default .NET icon.
+- **Work Done**:
+  - 2026-11-09: Logo is a white SVG (145x62, paths only, 3.9 KB). WPF
+    cannot show SVG directly; the paths can become a XAML
+    `DrawingImage` (no new package). White fits the dark left menu.
+  - `Directory.Build.props` has only `Version` and `Product`; `Authors`,
+    `Company`, `Copyright` missing. No `ApplicationIcon` set.
+  - `assets/` is untracked (new from user).
+  - Plan and questions sent to user.
+  - User decided (2026-11-09): unsaved = settings built from the pages
+    differ from the last saved ones (undo clears it); Save button orange
+    with `Save settings *`. Logo at top of left menu. Exe info: Authors
+    Gustav Vanderdi, Company DRÄXLMAIER Group, Copyright 2026 Gustav
+    Vanderdi. Icon: ZIP with arrow into a folder, own drawing, no new
+    package.
+  - Implemented:
+    - Unsaved marker: `MainWindow` compares a JSON snapshot of all page
+      values (destination, copy rows, log, monitor; running flag left out,
+      unreadable number counts as a change) with the snapshot taken after
+      load or save. Checked once per burst of edits (window-level text,
+      check, selection, password events, date picker, rule list, grid
+      cell end), at Background priority. Snapshot reads rows without
+      committing a grid edit, so typing in a cell is not cut off; a cell
+      counts when left. No settings file or failed load = orange from the
+      start (nothing saved yet). Style `UnsavedButton` (`#EA580C`).
+    - Logo: SVG paths copied into `App.xaml` `CompanyLogo`
+      (`DrawingImage`), Image at the top of the left menu, width 96.
+    - `Directory.Build.props`: `Authors`, `Company`, `Copyright`.
+      Windows file details show Company and Copyright; `Authors` has no
+      field there (NuGet only), so the name shows through Copyright.
+    - Icon: `assets/icon/make-icon.ps1` (System.Drawing, Windows
+      PowerShell 5.1) draws each size 16-256 from one 256 grid, writes
+      `assets/icon/daisiprovider.ico` (PNG entries, 12 KB). Desktop
+      `ApplicationIcon` points to it; the windows take the exe icon.
+    - Help `overview` and README ("Branding and icon") updated.
+  - Release build from scratch: 0 warnings, 0 errors, 6 s. Tests
+    160/160, 472 ms. Exe details read back: `DRÄXLMAIER Group`,
+    `© 2026 Gustav Vanderdi`.
+  - No unit test for the unsaved marker: it lives in the window code
+    (no view model); added to T037 as a GUI check, with logo and icon.
+  - Not run in the GUI; version not raised (still 1.2.0).
+- **time-spent**: ~0.4 hours
+
+---
+
+## T048: Release 1.2.1
+- **Status**: Closed
+- **Description**: User asked to make 1.2.1, commit, push and release
+  (T047 work).
+- **Work Done**:
+  - 2026-11-09: Version 1.2.1 in `Directory.Build.props`; README release
+    history.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 160/160,
+    411 ms.
+  - Committed T045-T048 work with `assets/` (logo SVG, icon and its
+    script) as release 1.2.1 (gmail identity), annotated tag `v1.2.1`,
+    pushed `master` and the tag to origin (this note included).
+  - Publish packages built after the commit from that commit:
+    `publish\DaisiProvider-1.2.1-runtime\` and `-selfcontained\` (not in
+    git; sizes reported in the session).
+  - Not tested in the GUI (T037).
+- **time-spent**: ~0.1 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 46 (37 closed, 9 open)
-- **Total Time**: ~11.0 hours
+- **Total Tasks**: 48 (39 closed, 9 open)
+- **Total Time**: ~11.5 hours
