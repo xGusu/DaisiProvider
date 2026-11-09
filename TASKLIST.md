@@ -1053,6 +1053,8 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
     - Positions column in copy rules; "Nothing to copy" row (T042).
     - Save button orange with `*` on change, normal after save or undo;
       logo in the left menu; icon on exe, window and taskbar (T047).
+    - Signed packages: exe starts; VS Code publish tasks sign; on another
+      PC the signature shows trusted after installing the `.cer` (T050).
 - **~time-spent so far**: ~0 hours
 
 ---
@@ -1338,6 +1340,67 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T050: Digital Signature for the Exe
+- **Status**: Closed
+- **Description**: User asks whether the app can be digitally signed.
+- **Work Done**:
+  - 2026-11-09: Answered: yes, needs a code-signing certificate; signing
+    itself is `signtool sign` with a timestamp after publish, for the exe
+    and own `DaisiProvider.*.dll` (Microsoft runtime files are already
+    signed). Options: company PKI certificate (ask IT), public CA
+    certificate (yearly cost, key on hardware token or cloud HSM), cloud
+    signing service, self-signed (test only, trusted only where
+    installed). Recommended company certificate. Waiting for user.
+  - User decided (2026-11-09): self-signed only.
+  - Plan: create a code-signing certificate in the user's Windows
+    certificate store on this PC (private key never in the repo); export
+    the public part as `.cer` into the repo so other PCs can trust it;
+    sign exe and own DLLs after publish with PowerShell
+    `Set-AuthenticodeSignature` (no Windows SDK needed); check the
+    signatures at the end. Questions sent (name, trust, integration).
+  - User decided (2026-11-09): `CN=Gustav Vanderdi`; trust on this PC;
+    signing inside both publish tasks; timestamp tried, else skipped.
+  - Implemented:
+    - `assets/signing/new-certificate.ps1`: reuses or creates the
+      certificate (RSA 3072, SHA256, 5 years, key not exportable) in
+      `CurrentUser\My`, exports `DaisiProvider-codesign.cer`, adds it to
+      `CurrentUser\Root` and `TrustedPublisher`.
+    - `assets/signing/sign-publish.ps1 -Package runtime|selfcontained`:
+      folder from the version in `Directory.Build.props`; fails without
+      certificate; signs exe and `DaisiProvider.*.dll`; DigiCert
+      timestamp or none when unreachable; fails if any file is not
+      signed with this certificate.
+    - tasks.json: `publish-desktop-*` now = `-unsigned` publish step,
+      then sign script.
+    - README section "Signature" (incl. trust on other PCs).
+  - Run: certificate `4E89BAC9...8A2D` created, valid to 2031-11-09,
+    trusted for this user. Signed the existing 1.2.1 folders (commit
+    `4c21b09`): 5 files each, all `Valid`, timestamped.
+  - Not tested: signed exe started; VS Code tasks themselves (scripts
+    run directly); another PC with the `.cer`. Moved to T037.
+- **time-spent**: ~0.4 hours
+
+---
+
+## T051: Release 1.2.2
+- **Status**: Closed
+- **Description**: User asked to commit, push and release the icon fix
+  (T049) and signing (T050). User chose 1.2.2 with tag.
+- **Work Done**:
+  - 2026-11-09: Version 1.2.2 in `Directory.Build.props`; README release
+    history.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 160/160,
+    397 ms.
+  - Committed with `assets/signing/` (gmail identity), annotated tag
+    `v1.2.2`, pushed `master` and the tag to origin (this note
+    included).
+  - Packages built and signed right after, from that commit:
+    `publish\DaisiProvider-1.2.2-runtime\` and `-selfcontained\` (not in
+    git; result reported in the session).
+- **time-spent**: ~0.1 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 49 (40 closed, 9 open)
-- **Total Time**: ~11.6 hours
+- **Total Tasks**: 51 (42 closed, 9 open)
+- **Total Time**: ~12.1 hours

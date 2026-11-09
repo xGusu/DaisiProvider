@@ -22,8 +22,8 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "publish-desktop-selfcontained",
-      "detail": "publish\\DaisiProvider-<version>-selfcontained: includes .NET, runs on any 64-bit Windows PC",
+      "label": "publish-desktop-selfcontained-unsigned",
+      "detail": "publish only, no signature (step of publish-desktop-selfcontained)",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -35,8 +35,25 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "publish-desktop-runtime",
-      "detail": "publish\\DaisiProvider-<version>-runtime: small, target PC needs .NET 10 Desktop Runtime x64",
+      "label": "publish-desktop-selfcontained",
+      "detail": "publish\\DaisiProvider-<version>-selfcontained, signed: includes .NET, runs on any 64-bit Windows PC",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "assets\\signing\\sign-publish.ps1",
+        "-Package",
+        "selfcontained"
+      ],
+      "dependsOn": "publish-desktop-selfcontained-unsigned",
+      "problemMatcher": []
+    },
+    {
+      "label": "publish-desktop-runtime-unsigned",
+      "detail": "publish only, no signature (step of publish-desktop-runtime)",
       "type": "process",
       "command": "dotnet",
       "args": [
@@ -46,6 +63,23 @@
         "-p:RestoreIgnoreFailedSources=true"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish-desktop-runtime",
+      "detail": "publish\\DaisiProvider-<version>-runtime, signed: small, target PC needs .NET 10 Desktop Runtime x64",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "assets\\signing\\sign-publish.ps1",
+        "-Package",
+        "runtime"
+      ],
+      "dependsOn": "publish-desktop-runtime-unsigned",
+      "problemMatcher": []
     }
   ]
 }

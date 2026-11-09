@@ -27,6 +27,29 @@ Two publish profiles exist for the Desktop app (VS Code: Run Task):
 Both tasks skip NuGet sources that cannot be reached (e.g. the company
 feed off the company network). `publish/` is not stored in git.
 
+### Signature
+
+Both publish tasks sign `DaisiProvider.Desktop.exe` and the own
+`DaisiProvider.*.dll` files with a self-signed code-signing certificate
+(`CN=Gustav Vanderdi`, 5 years) through `assets/signing/sign-publish.ps1`,
+then check every file. The Microsoft .NET files are already signed by
+Microsoft. A timestamp from `timestamp.digicert.com` keeps the signature
+valid after the certificate expires; without internet the files are
+signed without one. The `-unsigned` tasks publish without signing.
+
+The certificate's private key lives only in the Windows certificate store
+of the publishing PC (current user, not exportable), never in git. A PC
+that publishes runs `assets/signing/new-certificate.ps1` once; that
+creates a new certificate there, so each publishing PC signs with its own
+key and its own `.cer`.
+
+Self-signed means Windows trusts the signature only where the public
+certificate `assets/signing/DaisiProvider-codesign.cer` is installed.
+Elsewhere the files still show the signature, but as not trusted. To
+trust it on another PC: double-click the `.cer`, **Install
+Certificate**, Current User, place it in **Trusted Root Certification
+Authorities**, and again in **Trusted Publishers**.
+
 On the new PC the settings live in
 `C:\ProgramData\DaisiProvider\settings.json`. The file can be copied, but
 the network password must be entered again (it is encrypted for one PC
@@ -46,6 +69,8 @@ only), and Computer must be changed to the new PC's name.
   details. The 1.2.1 packages were rebuilt after the tag with a fix that
   shows the icon on the window and taskbar too; their file version names
   the later commit.
+- 1.2.2: icon on window and taskbar; packages signed with a self-signed
+  certificate.
 
 ### Branding and icon
 
