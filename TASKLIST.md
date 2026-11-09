@@ -1057,6 +1057,9 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
       PC the signature shows trusted after installing the `.cer` (T050).
     - Monitor scan line, grey "Finished earlier" rows, default from-date
       for a new setup (T053).
+    - Date picker shows/reads `yyyy-MM-dd`; copying row on top, list
+      order while states change; "Show finished earlier"; 200-row caps
+      (T055).
 - **~time-spent so far**: ~0 hours
 
 ---
@@ -1484,6 +1487,78 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T055: Date Picker Format, Monitor List Order and Row Limit
+- **Status**: Open
+- **Description**: User: date picker seems to use month/day order; monitor
+  list grows from the bottom and the copying ZIP is not visible; care
+  about how many orders are shown.
+- **Work Done**:
+  - 2026-11-09 evidence:
+    - Windows culture `en-150`, short date `dd/MM/yyyy`. No `Language`
+      set anywhere in Desktop, so WPF uses its default `en-US`: the date
+      picker shows and parses `M/d/yyyy`. Typed `04/11/2026` becomes
+      11 April. Wrong from-date = wrong scan range. Bug confirmed.
+    - `ApplyQueueItem` inserts each new row at index 0. A scan reports
+      ZIPs oldest first, so the oldest ends at the bottom; the monitor
+      processes oldest first, so the copying row sits at the bottom of
+      the batch, under all newer and grey rows.
+    - Row limit: `MaxFinishedRows` = 200 counts all finished rows,
+      including "Finished earlier" (T053). A 30-day range with many
+      orders fills the list with grey rows and pushes out orders
+      finished in this run (oldest by position removed first).
+  - Proposal and questions sent.
+  - User decided (2026-11-09): dates fixed `yyyy-MM-dd`; list order
+    active, waiting (next first), retry/failed, finished this run
+    (newest first), finished earlier; grey rows hidden behind "Show
+    finished earlier", 200 rows per finished group.
+  - Date check (Windows PowerShell 5.1, WPF DatePicker in a window,
+    script in the session scratchpad): shows `11/4/2026` for 4 Nov
+    (month/day); `Language` value source is Default, so the picker
+    formats with `CurrentCulture`. With a culture clone whose short date
+    is `yyyy-MM-dd` it shows `2026-11-04`. That process ran as `en-US`;
+    the app's own culture was not read, so the exact wrong format the
+    user saw is not confirmed, only that the fix controls it.
+  - Implemented:
+    - `App.OnStartup`: culture clone with `yyyy-MM-dd` and `-` as
+      `CurrentCulture` and `DefaultThreadCurrentCulture`.
+    - `MonitorRow.Group` / `SortOrder` (renamed from `Order`, which is
+      the order ID column) per decided order; finish time stamped when a
+      row first finishes in this run.
+    - `MainWindow`: rows added at the end; `ListCollectionView` with
+      live sorting (Group, SortOrder, ZipPath) and live filter for grey
+      rows; checkbox "Show finished earlier"; `TrimFinishedRows` keeps
+      the newest 200 per finished group; bottom summary without grey
+      rows, which are counted in the scan line.
+    - Help `monitor`, README "Folder monitor".
+  - Build errors on the way: `Order` name clash, local `finishedAt`
+    clash, untyped tuple switch; fixed.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 164/164,
+    467 ms. No new tests: the order and filter live in the Desktop
+    project, which has no test project. GUI check in T037.
+- **~time-spent so far**: ~0.5 hours
+
+---
+
+## T056: Release 1.2.4
+- **Status**: Closed
+- **Description**: User asked to release T055 as 1.2.4 (commit, tag,
+  push, packages).
+- **Work Done**:
+  - 2026-11-09: Version 1.2.4 in `Directory.Build.props`; README release
+    history.
+  - Release build from scratch: 0 warnings, 0 errors. Tests 164/164,
+    443 ms.
+  - User asked for the release before the GUI check of T055 (still in
+    T037); T053 and T055 stay open until then.
+  - Committed (gmail identity), annotated tag `v1.2.4`, pushed `master`
+    and the tag to origin (this note included).
+  - Signed packages built right after from that commit:
+    `publish\DaisiProvider-1.2.4-runtime\` and `-selfcontained\` (not in
+    git; result reported in the session).
+- **time-spent**: ~0.1 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 54 (44 closed, 10 open)
+- **Total Tasks**: 56 (45 closed, 11 open)
 - **Total Time**: ~12.1 hours

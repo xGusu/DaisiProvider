@@ -25,7 +25,15 @@ The monitor runs only while this app is open. While it runs, Manual upload is sw
 
 ## Queue
 
-One row per ZIP, newest on top. Finished rows stay until 200 are reached.
+One row per ZIP, in this order:
+
+1. The ZIP being processed now (always on top).
+2. Waiting ZIPs, the next one first (oldest day first).
+3. Retry scheduled and failed ZIPs.
+4. ZIPs finished since Start, newest first. The newest 200 are kept.
+5. Finished earlier (grey), newest first: hidden unless **Show finished earlier** is ticked. The newest 200 are kept.
+
+Dates are always written `yyyy-MM-dd`, also in **Process ZIPs from**.
 
 Below the Start button each scan reports what it saw, e.g. `Last scan 10:55:01: 2026-11-04 to 2026-11-09, 3 ZIPs, 3 finished earlier, 0 new`. If the monitor seems idle, this line tells why: no ZIP in the range, or all of them finished earlier.
 

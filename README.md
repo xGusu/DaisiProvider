@@ -74,6 +74,9 @@ only), and Computer must be changed to the new PC's name.
 - 1.2.3: monitor shows each scan's range and counts and lists ZIPs
   finished earlier as grey rows; a new setup processes the whole look
   back range.
+- 1.2.4: dates always `yyyy-MM-dd`; monitor list keeps the copying ZIP
+  on top; finished-earlier rows hidden by default; 200 rows per finished
+  group.
 
 ### Branding and icon
 
@@ -234,8 +237,19 @@ since an empty list would resend every order in range.
 
 A monitor that skips everything looks idle, so each scan reports its date
 range and how many ZIPs it found, how many finished earlier and how many
-are new. ZIPs on the finished list are shown once per Start as greyed
-"Finished earlier" rows with their result and time.
+are new. ZIPs on the finished list are reported once per Start as greyed
+"Finished earlier" rows with their result and time; they are hidden unless
+**Show finished earlier** is ticked.
+
+The list keeps the ZIP being processed on top, then waiting ZIPs in
+processing order, then retries and failures, then ZIPs finished since
+Start (newest first), then the finished-earlier rows. Each finished group
+keeps its newest 200 rows, so a long look back range cannot push out
+the current run.
+
+The app shows and reads dates as `yyyy-MM-dd` on every PC. WPF's date
+picker otherwise used the US month/day order whatever the Windows region
+said, and a misread from-date changes the scan range.
 
 **Start** saves all settings and takes a snapshot of them; changes apply
 after Stop and Start. A running monitor starts again with the app. Stop

@@ -161,6 +161,13 @@
                             Content="Retry selected"
                             ToolTip="Retry a failed ZIP now"
                             Click="MonitorRetry_Click" />
+                    <CheckBox x:Name="ShowFinishedEarlierCheckBox"
+                              DockPanel.Dock="Right"
+                              Content="Show finished earlier"
+                              VerticalAlignment="Center"
+                              Margin="0,0,12,0"
+                              ToolTip="Show ZIPs that were on the finished list before Start (newest 200, greyed)"
+                              Click="ShowFinishedEarlier_Click" />
                     <TextBlock x:Name="MonitorSummaryTextBlock"
                                Style="{StaticResource MutedText}"
                                VerticalAlignment="Center" />

@@ -8,9 +8,24 @@ namespace DaisiProvider.Desktop;
 
 public sealed class MonitorRow(string zipPath, DateOnly day) : INotifyPropertyChanged
 {
+    // List order (user decision, T055): being processed, waiting (next first), retry/failed,
+    // finished in this run (newest first), finished earlier (newest first).
+    public const int ActiveGroup = 0;
+    public const int WaitingGroup = 1;
+    public const int ProblemGroup = 2;
+    public const int FinishedGroup = 3;
+    public const int FinishedEarlierGroup = 4;
+
+    private DateTimeOffset? finishedInRunUtc;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ZipPath { get; } = zipPath;
+
+    public int Group { get; private set; } = WaitingGroup;
+
+    // Sort key inside the group; ascending.
+    public long SortOrder { get; private set; } = day.DayNumber;
 
     public string Day { get; } = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -47,7 +62,26 @@ public sealed class MonitorRow(string zipPath, DateOnly day) : INotifyPropertyCh
             Detail = DetailText(item);
         }
 
+        if (IsFinished && !IsFinishedEarlier)
+        {
+            finishedInRunUtc ??= DateTimeOffset.UtcNow;
+        }
+
+        (int Group, long SortOrder) key = item switch
+        {
+            { FinishedEarlierUtc: DateTimeOffset earlier } => (FinishedEarlierGroup, -earlier.UtcTicks),
+            _ when IsFinished => (FinishedGroup, -finishedInRunUtc!.Value.UtcTicks),
+            { Stage: null } => (WaitingGroup, (long)day.DayNumber),
+            { Stage: UploadStage.RetryScheduled or UploadStage.Failed } => (ProblemGroup, (long)day.DayNumber),
+            _ => (ActiveGroup, (long)day.DayNumber)
+        };
+        (Group, SortOrder) = key;
+
+        // Named events as well: live sorting and filtering listen to single properties.
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Group)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SortOrder)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFinishedEarlier)));
     }
 
     private static string OrderLabel(string zipPath)

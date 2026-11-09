@@ -3,11 +3,13 @@ using DaisiProvider.Domain.Uploads;
 using DaisiProvider.Infrastructure.Uploads;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -26,7 +28,7 @@ public partial class MainWindow : System.Windows.Window
     private static string AppVersion { get; } =
         typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "unknown";
 
-    // Finished rows kept in the queue view; the finished list on disk is complete.
+    // Rows kept per finished group (this run / earlier); the finished list on disk is complete (T055).
     private const int MaxFinishedRows = 200;
 
     private readonly InMemoryUploadProgressStore progressStore = new();
@@ -61,7 +63,7 @@ public partial class MainWindow : System.Windows.Window
         monitor = new UploadFolderMonitor(new DatedFolderZipScanner(), processedStore, TimeProvider.System);
         monitor.ItemChanged += item => Dispatcher.BeginInvoke(() => ApplyQueueItem(item));
         monitor.StatusChanged += status => Dispatcher.BeginInvoke(() => ApplyMonitorStatus(status));
-        MonitorGrid.ItemsSource = monitorRows;
+        MonitorGrid.ItemsSource = CreateMonitorView();
         LookBackDaysTextBox.Text = UploadMonitorSettings.DefaultLookBackDays.ToString();
         ProcessFromDatePicker.SelectedDate = DefaultProcessFromDate();
         ScanIntervalTextBox.Text = UploadMonitorSettings.DefaultScanIntervalSeconds.ToString();
@@ -332,30 +334,61 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
+    // Sorted by MonitorRow.Group and SortOrder as states change, so the ZIP being copied stays on top.
+    private ListCollectionView CreateMonitorView()
+    {
+        var view = (ListCollectionView)CollectionViewSource.GetDefaultView(monitorRows);
+        view.SortDescriptions.Add(new SortDescription(nameof(MonitorRow.Group), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(MonitorRow.SortOrder), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(MonitorRow.ZipPath), ListSortDirection.Ascending));
+        view.LiveSortingProperties.Add(nameof(MonitorRow.Group));
+        view.LiveSortingProperties.Add(nameof(MonitorRow.SortOrder));
+        view.IsLiveSorting = true;
+        view.Filter = entry => ShowFinishedEarlierCheckBox.IsChecked == true || !((MonitorRow)entry).IsFinishedEarlier;
+        view.LiveFilteringProperties.Add(nameof(MonitorRow.IsFinishedEarlier));
+        view.IsLiveFiltering = true;
+        return view;
+    }
+
+    private void ShowFinishedEarlier_Click(object sender, RoutedEventArgs eventArgs) =>
+        CollectionViewSource.GetDefaultView(monitorRows).Refresh();
+
     private void ApplyQueueItem(MonitorQueueItem item)
     {
         if (!monitorRowsByZip.TryGetValue(item.ZipPath, out var row))
         {
             row = new MonitorRow(item.ZipPath, item.FolderDate);
             monitorRowsByZip[item.ZipPath] = row;
-            monitorRows.Insert(0, row);
+            monitorRows.Add(row);
         }
 
         row.Update(item);
-        var finishedRows = monitorRows.Where(entry => entry.IsFinished).ToArray();
-        foreach (var oldRow in finishedRows.Skip(MaxFinishedRows))
+        TrimFinishedRows(MonitorRow.FinishedGroup);
+        TrimFinishedRows(MonitorRow.FinishedEarlierGroup);
+
+        var done = monitorRows.Count(entry => entry.Group == MonitorRow.FinishedGroup);
+        var earlier = monitorRows.Count(entry => entry.Group == MonitorRow.FinishedEarlierGroup);
+        var failed = monitorRows.Count(entry => entry.Stage == UploadStage.Failed);
+        var retrying = monitorRows.Count(entry => entry.Stage == UploadStage.RetryScheduled);
+        var waiting = monitorRows.Count(entry => entry.Group is MonitorRow.ActiveGroup or MonitorRow.WaitingGroup);
+        MonitorSummaryTextBlock.Text =
+            $"{done} done, {waiting} in progress or waiting, {retrying} retrying, {failed} failed" +
+            (earlier > 0 ? $"; {earlier} finished earlier listed" : string.Empty);
+    }
+
+    // Keeps the newest MaxFinishedRows of one finished group; waiting, active and failed rows always stay.
+    private void TrimFinishedRows(int group)
+    {
+        var oldRows = monitorRows
+            .Where(entry => entry.Group == group)
+            .OrderBy(entry => entry.SortOrder)
+            .Skip(MaxFinishedRows)
+            .ToArray();
+        foreach (var oldRow in oldRows)
         {
             monitorRows.Remove(oldRow);
             monitorRowsByZip.Remove(oldRow.ZipPath);
         }
-
-        var earlier = finishedRows.Count(entry => entry.IsFinishedEarlier);
-        var failed = monitorRows.Count(entry => entry.Stage == UploadStage.Failed);
-        var retrying = monitorRows.Count(entry => entry.Stage == UploadStage.RetryScheduled);
-        var waiting = monitorRows.Count - finishedRows.Length - failed - retrying;
-        MonitorSummaryTextBlock.Text =
-            $"{finishedRows.Length - earlier} done, {earlier} finished earlier, {waiting} in progress or waiting, " +
-            $"{retrying} retrying, {failed} failed";
     }
 
     private void ApplyMonitorStatus(MonitorStatus status)
