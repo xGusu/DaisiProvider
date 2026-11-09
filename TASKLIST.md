@@ -1184,6 +1184,20 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T044: Rule: Task List Before Push
+- **Status**: Closed
+- **Description**: After pushes the task list kept an uncommitted push
+  note (T042, T043). User wants the task list updated first, then push.
+- **Work Done**:
+  - 2026-11-09: Rule added to SESSION_BASELINE "Commit Protocol": record
+    commit, tag and push in TASKLIST.md before committing, so the record
+    is part of the same commit.
+  - User said "push all": SESSION_BASELINE and TASKLIST committed and
+    pushed to origin `master` in one commit (this note included).
+- **time-spent**: ~0.02 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 43 (34 closed, 9 open)
+- **Total Tasks**: 44 (35 closed, 9 open)
 - **Total Time**: ~10.9 hours

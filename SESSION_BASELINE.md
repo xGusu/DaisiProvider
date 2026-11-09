@@ -186,6 +186,10 @@ technical detail in relevant documentation.
 - Finish the actual work, update tasks/docs, say what is uncommitted
 - Commit only when user says so or after a block they have reviewed
 - Commits never include a push
+- Before a commit or push, write it into TASKLIST.md first (what is
+  committed, tag, push), so the record goes into the same commit and
+  nothing is left uncommitted afterwards. Never leave a push note for a
+  later commit.
 - Before committing, check if any dirty files belong to user (ask, don't stage
   around them silently)
 
