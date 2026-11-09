@@ -1198,6 +1198,39 @@ Every piece of work gets a T-ID. Rules in SESSION_BASELINE.md.
 
 ---
 
+## T045: Reading Session Starter Files (2026-11-09)
+- **Status**: Closed
+- **Description**: Session start: read entry point, baseline, task list,
+  and README; check Git identity.
+- **Work Done**:
+  - Read `.claude.md`, `SESSION_BASELINE.md`, `TASKLIST.md`, `README.md`.
+  - Git identity matches baseline (repo-local gmail identity, see T003).
+    Working tree clean.
+- **time-spent**: ~0.02 hours
+
+---
+
+## T046: Publish Packages 1.2.0
+- **Status**: Closed
+- **Description**: User asked for the publish packages of version 1.2.0
+  (self-contained and runtime, see T031).
+- **Work Done**:
+  - 2026-11-09: `Directory.Build.props` version 1.2.0. No 1.2.0 publish
+    folders existed before.
+  - Finding: `dotnet publish --no-incremental` fails (MSB1001 unknown
+    switch). Clean build done with `dotnet clean DaisiProvider.sln -c
+    Release` before publishing.
+  - Published from `86b2cdf` (code equals tag `v1.2.0`; later commits
+    are docs only). File version `1.2.0+86b2cdf...`.
+  - `publish\DaisiProvider-1.2.0-runtime\`: 11 files, 0.5 MB.
+  - `publish\DaisiProvider-1.2.0-selfcontained\`: 406 files, 139.9 MB.
+  - Not started on another PC (T031).
+  - User said "commit and push" (2026-11-09): TASKLIST committed and
+    pushed to origin `master` in one commit (this note included).
+- **time-spent**: ~0.1 hours
+
+---
+
 ## Project Statistics
-- **Total Tasks**: 44 (35 closed, 9 open)
-- **Total Time**: ~10.9 hours
+- **Total Tasks**: 46 (37 closed, 9 open)
+- **Total Time**: ~11.0 hours
